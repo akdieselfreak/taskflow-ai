@@ -35,8 +35,11 @@ export class DataManagerUI {
             const result = await this.dataManager.exportAllData(format);
             
             // Show success message
+            const itemsText = result.noteCount > 0 
+                ? `${result.taskCount} tasks, ${result.noteCount} notes`
+                : `${result.taskCount} tasks`;
             this.notifications.showSuccess(
-                `${format.toUpperCase()} exported successfully! (${result.taskCount} tasks)`
+                `${format.toUpperCase()} exported successfully! (${itemsText})`
             );
 
         } catch (error) {

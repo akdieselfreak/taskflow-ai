@@ -27,17 +27,17 @@ export class DataManager {
                     break;
                 case 'markdown':
                     exportedContent = this.exportToMarkdown(data);
-                    filename = `taskflow-tasks-${this.getDateString()}.md`;
+                    filename = `taskflow-export-${this.getDateString()}.md`;
                     mimeType = 'text/markdown';
                     break;
                 case 'obsidian':
                     exportedContent = this.exportToObsidian(data);
-                    filename = `TaskFlow Tasks ${this.getDateString()}.md`;
+                    filename = `TaskFlow Export ${this.getDateString()}.md`;
                     mimeType = 'text/markdown';
                     break;
                 case 'csv':
                     exportedContent = this.exportToCSV(data);
-                    filename = `taskflow-tasks-${this.getDateString()}.csv`;
+                    filename = `taskflow-export-${this.getDateString()}.csv`;
                     mimeType = 'text/csv';
                     break;
                 default:
@@ -54,7 +54,7 @@ export class DataManager {
                 filename 
             });
 
-            return { success: true, filename, taskCount: data.tasks.length };
+            return { success: true, filename, taskCount: data.tasks.length, noteCount: data.notes.length };
 
         } catch (error) {
             Logger.error('Export failed', error);
@@ -69,9 +69,11 @@ export class DataManager {
                 version: '1.0',
                 source: 'TaskFlow AI',
                 taskCount: this.appState.tasks.length,
+                noteCount: this.appState.notes.length,
                 userName: this.appState.onboardingData.userName
             },
             tasks: this.appState.tasks,
+            notes: this.appState.notes,
             configuration: {
                 userName: this.appState.onboardingData.userName,
                 nameVariations: this.appState.onboardingData.nameVariations,
@@ -87,11 +89,12 @@ export class DataManager {
     }
 
     exportToMarkdown(data) {
-        const { tasks, metadata } = data;
+        const { tasks, notes, metadata } = data;
         
         let markdown = `# TaskFlow AI Export\n\n`;
         markdown += `**Exported:** ${new Date(metadata.exportedAt).toLocaleString()}\n`;
         markdown += `**Tasks:** ${metadata.taskCount}\n`;
+        markdown += `**Notes:** ${metadata.noteCount}\n`;
         markdown += `**User:** ${metadata.userName}\n\n`;
 
         // Active Tasks
@@ -131,25 +134,51 @@ export class DataManager {
                 markdown += `- [ ] **${task.name}** *(postponed)*\n`;
                 if (task.description) markdown += `  - ${task.description}\n`;
             });
+            markdown += `\n`;
+        }
+
+        // Notes Section
+        if (notes && notes.length > 0) {
+            markdown += `## 📝 Notes (${notes.length})\n\n`;
+            notes.forEach(note => {
+                markdown += `### ${note.title}\n`;
+                markdown += `**Created:** ${new Date(note.createdAt).toLocaleDateString()}\n`;
+                if (note.modifiedAt !== note.createdAt) {
+                    markdown += `**Modified:** ${new Date(note.modifiedAt).toLocaleDateString()}\n`;
+                }
+                if (note.tags && note.tags.length > 0) {
+                    markdown += `**Tags:** ${note.tags.map(tag => `#${tag}`).join(' ')}\n`;
+                }
+                markdown += `\n${note.content}\n\n`;
+                if (note.summary) {
+                    markdown += `**AI Summary:** ${note.summary}\n\n`;
+                }
+                if (note.extractedTasks && note.extractedTasks.length > 0) {
+                    markdown += `**Extracted Tasks:** ${note.extractedTasks.length} tasks found\n\n`;
+                }
+                markdown += `---\n\n`;
+            });
         }
 
         return markdown;
     }
 
     exportToObsidian(data) {
-        const { tasks, metadata } = data;
+        const { tasks, notes, metadata } = data;
         
         let obsidian = `---\n`;
-        obsidian += `title: TaskFlow AI Tasks\n`;
+        obsidian += `title: TaskFlow AI Export\n`;
         obsidian += `created: ${metadata.exportedAt}\n`;
-        obsidian += `tags: [taskflow, tasks, productivity]\n`;
+        obsidian += `tags: [taskflow, tasks, notes, productivity]\n`;
         obsidian += `task-count: ${metadata.taskCount}\n`;
+        obsidian += `note-count: ${metadata.noteCount}\n`;
         obsidian += `user: ${metadata.userName}\n`;
         obsidian += `---\n\n`;
 
-        obsidian += `# TaskFlow AI Tasks\n\n`;
+        obsidian += `# TaskFlow AI Export\n\n`;
         obsidian += `> **Exported:** ${new Date(metadata.exportedAt).toLocaleString()}\n`;
-        obsidian += `> **Total Tasks:** ${metadata.taskCount}\n\n`;
+        obsidian += `> **Total Tasks:** ${metadata.taskCount}\n`;
+        obsidian += `> **Total Notes:** ${metadata.noteCount}\n\n`;
 
         // Active Tasks with Obsidian task format
         const activeTasks = tasks.filter(t => !t.completed && !t.postponed);
@@ -209,6 +238,29 @@ export class DataManager {
             });
         }
 
+        // Notes Section
+        if (notes && notes.length > 0) {
+            obsidian += `\n## 📝 Notes\n\n`;
+            notes.forEach(note => {
+                obsidian += `### [[${note.title}]]\n`;
+                obsidian += `**Created:** ${new Date(note.createdAt).toISOString().split('T')[0]}\n`;
+                if (note.modifiedAt !== note.createdAt) {
+                    obsidian += `**Modified:** ${new Date(note.modifiedAt).toISOString().split('T')[0]}\n`;
+                }
+                if (note.tags && note.tags.length > 0) {
+                    obsidian += `**Tags:** ${note.tags.map(tag => `#${tag}`).join(' ')}\n`;
+                }
+                obsidian += `\n${note.content}\n\n`;
+                if (note.summary) {
+                    obsidian += `> [!ai] AI Summary\n> ${note.summary.split('\n').join('\n> ')}\n\n`;
+                }
+                if (note.extractedTasks && note.extractedTasks.length > 0) {
+                    obsidian += `> [!info] Extracted Tasks\n> ${note.extractedTasks.length} tasks found and extracted from this note\n\n`;
+                }
+                obsidian += `---\n\n`;
+            });
+        }
+
         // Add backlinks section for Obsidian
         obsidian += `\n---\n\n`;
         obsidian += `## Related\n`;
@@ -220,14 +272,18 @@ export class DataManager {
     }
 
     exportToCSV(data) {
-        const { tasks } = data;
+        const { tasks, notes } = data;
         
-        const headers = [
+        // Create two CSV sections - one for tasks and one for notes
+        let csv = '=== TASKS ===\n';
+        
+        // Tasks section
+        const taskHeaders = [
             'Name', 'Description', 'Notes', 'Status', 'Type', 
             'Created', 'Completed', 'Postponed', 'Modified'
         ];
         
-        let csv = headers.join(',') + '\n';
+        csv += taskHeaders.join(',') + '\n';
         
         tasks.forEach(task => {
             const row = [
@@ -243,6 +299,32 @@ export class DataManager {
             ];
             csv += row.join(',') + '\n';
         });
+        
+        // Notes section
+        if (notes && notes.length > 0) {
+            csv += '\n\n=== NOTES ===\n';
+            
+            const noteHeaders = [
+                'Title', 'Content', 'Tags', 'Summary', 'AI Processed', 
+                'Extracted Tasks Count', 'Created', 'Modified'
+            ];
+            
+            csv += noteHeaders.join(',') + '\n';
+            
+            notes.forEach(note => {
+                const row = [
+                    this.escapeCsvField(note.title),
+                    this.escapeCsvField(note.content),
+                    this.escapeCsvField(note.tags ? note.tags.join('; ') : ''),
+                    this.escapeCsvField(note.summary || ''),
+                    note.aiProcessed ? 'Yes' : 'No',
+                    note.extractedTasks ? note.extractedTasks.length : 0,
+                    this.formatDateForCSV(note.createdAt),
+                    this.formatDateForCSV(note.modifiedAt)
+                ];
+                csv += row.join(',') + '\n';
+            });
+        }
         
         return csv;
     }
