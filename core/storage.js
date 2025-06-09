@@ -1,0 +1,148 @@
+// core/storage.js - LocalStorage Management
+
+import { STORAGE_KEYS, Logger } from './config.js';
+
+export class StorageManager {
+    static saveConfiguration(onboardingData) {
+        try {
+            localStorage.setItem(STORAGE_KEYS.ONBOARDING_COMPLETED, 'true');
+            localStorage.setItem(STORAGE_KEYS.USER_NAME, onboardingData.userName);
+            localStorage.setItem(STORAGE_KEYS.SERVICE_TYPE, onboardingData.service);
+            localStorage.setItem(STORAGE_KEYS.API_ENDPOINT, onboardingData.endpoint);
+            localStorage.setItem(STORAGE_KEYS.API_KEY, onboardingData.apiKey);
+            localStorage.setItem(STORAGE_KEYS.MODEL_NAME, onboardingData.model);
+            
+            if (onboardingData.nameVariations) {
+                localStorage.setItem(STORAGE_KEYS.NAME_VARIATIONS, JSON.stringify(onboardingData.nameVariations));
+            }
+            
+            Logger.log('Configuration saved successfully');
+            return true;
+        } catch (error) {
+            Logger.error('Failed to save configuration', error);
+            return false;
+        }
+    }
+
+    static loadConfiguration() {
+        try {
+            const config = {
+                hasCompletedOnboarding: localStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETED) === 'true',
+                userName: localStorage.getItem(STORAGE_KEYS.USER_NAME) || '',
+                service: localStorage.getItem(STORAGE_KEYS.SERVICE_TYPE) || '',
+                endpoint: localStorage.getItem(STORAGE_KEYS.API_ENDPOINT) || '',
+                apiKey: localStorage.getItem(STORAGE_KEYS.API_KEY) || '',
+                model: localStorage.getItem(STORAGE_KEYS.MODEL_NAME) || '',
+                nameVariations: this.loadNameVariations(),
+                systemPrompt: localStorage.getItem(STORAGE_KEYS.SYSTEM_PROMPT)
+            };
+
+            Logger.log('Configuration loaded successfully', { 
+                userName: config.userName, 
+                service: config.service,
+                nameVariations: config.nameVariations 
+            });
+            
+            return config;
+        } catch (error) {
+            Logger.error('Failed to load configuration', error);
+            return null;
+        }
+    }
+
+    static loadNameVariations() {
+        try {
+            const savedVariations = localStorage.getItem(STORAGE_KEYS.NAME_VARIATIONS);
+            if (savedVariations) {
+                return JSON.parse(savedVariations);
+            }
+            return null;
+        } catch (error) {
+            Logger.warn('Failed to load name variations', error);
+            return null;
+        }
+    }
+
+    static saveNameVariations(variations) {
+        try {
+            localStorage.setItem(STORAGE_KEYS.NAME_VARIATIONS, JSON.stringify(variations));
+            Logger.log('Name variations saved', { variations });
+            return true;
+        } catch (error) {
+            Logger.error('Failed to save name variations', error);
+            return false;
+        }
+    }
+
+    static saveTasks(tasks) {
+        try {
+            localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
+            Logger.log('Tasks saved to localStorage');
+            return true;
+        } catch (error) {
+            Logger.error('Failed to save tasks', error);
+            return false;
+        }
+    }
+
+    static loadTasks() {
+        try {
+            const savedTasks = localStorage.getItem(STORAGE_KEYS.TASKS);
+            if (savedTasks) {
+                const tasks = JSON.parse(savedTasks);
+                return this.migrateTasks(tasks);
+            }
+            return [];
+        } catch (error) {
+            Logger.error('Failed to load tasks', error);
+            return [];
+        }
+    }
+
+    static migrateTasks(tasks) {
+        return tasks.map(task => {
+            // Ensure all required fields exist
+            if (!task.id) task.id = Date.now().toString() + Math.random();
+            if (!task.createdAt) task.createdAt = new Date().toISOString();
+            if (!task.date) task.date = new Date().toISOString().split('T')[0];
+            if (!task.type) task.type = 'quick';
+            
+            return task;
+        });
+    }
+
+    static saveSystemPrompt(prompt) {
+        try {
+            localStorage.setItem(STORAGE_KEYS.SYSTEM_PROMPT, prompt);
+            Logger.log('System prompt saved');
+            return true;
+        } catch (error) {
+            Logger.error('Failed to save system prompt', error);
+            return false;
+        }
+    }
+
+    static clearAll() {
+        try {
+            Object.values(STORAGE_KEYS).forEach(key => {
+                localStorage.removeItem(key);
+            });
+            Logger.log('All storage cleared');
+            return true;
+        } catch (error) {
+            Logger.error('Failed to clear storage', error);
+            return false;
+        }
+    }
+
+    static updateUserName(newName) {
+        try {
+            localStorage.setItem(STORAGE_KEYS.USER_NAME, newName);
+            Logger.log('User name updated', { newName });
+            return true;
+        } catch (error) {
+            Logger.error('Failed to update user name', error);
+            return false;
+        }
+    }
+}

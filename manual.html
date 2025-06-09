@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskFlow AI - User Manual</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+
+    <div class="manual-container">
+        <header>
+            <h1>TaskFlow AI</h1>
+            <p class="subtitle">Complete User Manual</p>
+        </header>
+
+        <nav>
+            <a href="#getting-started">Getting Started</a>
+            <a href="#features">Features</a>
+            <a href="#task-management">Task Management</a>
+            <a href="#ai-extraction">AI Extraction</a>
+            <a href="#data-management">Data Management</a>
+            <a href="#settings">Settings</a>
+            <a href="#tips">Tips & Tricks</a>
+            <a href="#troubleshooting">Troubleshooting</a>
+        </nav>
+
+        <section class="manual-section" id="welcome">
+            <h2>Welcome to TaskFlow AI</h2>
+            <p>TaskFlow AI is an intelligent task management system that combines the simplicity of traditional to-do lists with the power of artificial intelligence. Whether you're managing daily tasks or extracting multiple action items from emails and messages, TaskFlow AI helps you stay organized and productive.</p>
+            
+            <div class="feature-grid">
+                <div class="feature-box">
+                    <div class="feature-icon">✨</div>
+                    <h3>AI-Powered</h3>
+                    <p>Extract multiple tasks from emails, messages, and documents automatically</p>
+                </div>
+                <div class="feature-box">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Focused Design</h3>
+                    <p>Clean interface keeps you focused on what matters today</p>
+                </div>
+                <div class="feature-box">
+                    <div class="feature-icon">🔒</div>
+                    <h3>Privacy First</h3>
+                    <p>All data stored locally in your browser</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="manual-section" id="getting-started">
+            <h2>Getting Started</h2>
+            
+            <h3>Initial Setup</h3>
+            <p>When you first open TaskFlow AI, you'll go through a simple onboarding process:</p>
+            
+            <ol>
+                <li><strong>Enter Your Name</strong> - This personalizes your experience and helps AI identify tasks assigned to you</li>
+                <li><strong>Choose Your AI Service</strong> - Select between:
+                    <ul>
+                        <li><strong>Ollama</strong> - For local or self-hosted AI models</li>
+                        <li><strong>OpenAI</strong> - For GPT models via API</li>
+                        <li><strong>Open WebUI</strong> - For unified interface with multiple AI models</li>
+                    </ul>
+                </li>
+                <li><strong>Configure Your Service</strong> - Enter connection details</li>
+                <li><strong>Select a Model</strong> - Choose which AI model to use</li>
+                <li><strong>Test Connection</strong> - Verify everything is working</li>
+                <li><strong>Smart Name Recognition Setup</strong> - AI automatically discovers name variations and nicknames for better task detection</li>
+            </ol>
+
+            <div class="tip">
+                <strong>💡 Tip:</strong> During setup, TaskFlow AI will automatically discover common nicknames and variations of your name (like "Bob" for "Robert"). This helps the AI recognize tasks assigned to you even when people use different names in emails and messages.
+            </div>
+        </section>
+
+        <section class="manual-section" id="features">
+            <h2>Core Features</h2>
+            
+            <h3>Task Creation Methods</h3>
+            
+            <div class="feature-grid">
+                <div class="feature-box">
+                    <h4>✓ Quick Task</h4>
+                    <p>Create tasks manually with:</p>
+                    <ul>
+                        <li>Task name</li>
+                        <li>Description</li>
+                        <li>Additional notes</li>
+                    </ul>
+                </div>
+                <div class="feature-box">
+                    <h4>✨ AI Extract Task</h4>
+                    <p>Paste any text and AI will extract:</p>
+                    <ul>
+                        <li>Multiple action items</li>
+                        <li>Deadlines</li>
+                        <li>Important details</li>
+                    </ul>
+                </div>
+                <div class="feature-box">
+                    <h4>🌐 Open WebUI</h4>
+                    <p>Connect to your Open WebUI instance with:</p>
+                    <ul>
+                        <li>Server URL</li>
+                        <li>API key</li>
+                        <li>Auto-detected models</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>Task States</h3>
+            <p>Tasks can be in one of three states:</p>
+            
+            <ul>
+                <li><strong>Active</strong> - Today's tasks displayed in the main view</li>
+                <li><strong>Completed</strong> - Finished tasks (click ✓ Completed button to view)</li>
+                <li><strong>Postponed</strong> - Tasks for later (click ⏰ Postponed button to view)</li>
+            </ul>
+
+            <h3>Keyboard Shortcuts</h3>
+            <p>Speed up your workflow with these keyboard shortcuts:</p>
+            <ul>
+                <li><kbd>Ctrl+Q</kbd> or <kbd>Cmd+Q</kbd> - Open Quick Task modal</li>
+                <li><kbd>Ctrl+E</kbd> or <kbd>Cmd+E</kbd> - Open AI Extract Task modal</li>
+                <li><kbd>Ctrl+,</kbd> or <kbd>Cmd+,</kbd> - Open Settings</li>
+                <li><kbd>Esc</kbd> - Close any open modal</li>
+            </ul>
+        </section>
+
+        <section class="manual-section" id="task-management">
+            <h2>Managing Your Tasks</h2>
+            
+            <h3>Working with Active Tasks</h3>
+            <ul>
+                <li><strong>Quick Complete</strong> - Click the checkbox next to any task</li>
+                <li><strong>Edit Task</strong> - Click on the task to open the editor</li>
+                <li><strong>Available Actions:</strong>
+                    <ul>
+                        <li>Save Changes - Update task details</li>
+                        <li>Complete - Mark as done</li>
+                        <li>Postpone - Move to later</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h3>Completed Tasks</h3>
+            <ul>
+                <li>Click the <strong>✓ Completed</strong> button to view</li>
+                <li>Shows up to 20 most recent completed tasks</li>
+                <li><strong>Available Actions:</strong>
+                    <ul>
+                        <li>Copy to Today - Create a new copy</li>
+                        <li>Delete - Remove permanently</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h3>Postponed Tasks</h3>
+            <ul>
+                <li>Click the <strong>⏰ Postponed</strong> button to view</li>
+                <li>Tasks you've deferred for later</li>
+                <li><strong>Available Actions:</strong>
+                    <ul>
+                        <li>Move to Today - Reactivate the task</li>
+                        <li>Delete - Remove permanently</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <div class="note">
+                <strong>📝 Note:</strong> Task counts appear on the buttons, giving you a quick overview without cluttering the interface.
+            </div>
+        </section>
+
+        <section class="manual-section" id="ai-extraction">
+            <h2>AI Task Extraction</h2>
+            
+            <p>One of TaskFlow AI's most powerful features is extracting multiple tasks from unstructured text.</p>
+            
+            <h3>How It Works</h3>
+            <ol>
+                <li>Click <strong>✨ AI Extract Task</strong></li>
+                <li>Paste your text (email, chat, notes, etc.)</li>
+                <li>AI analyzes and extracts:
+                    <ul>
+                        <li>Multiple distinct tasks (if found)</li>
+                        <li>Clear, actionable task titles</li>
+                        <li>Brief descriptions</li>
+                        <li>Important details, dates, and links</li>
+                    </ul>
+                </li>
+                <li>Review and edit each extracted task</li>
+                <li>Remove unwanted tasks if needed</li>
+                <li>Save all tasks to your list</li>
+            </ol>
+
+            <h3>Multiple Tasks Support</h3>
+            <p>The AI can now identify and extract multiple tasks from the same text:</p>
+            <ul>
+                <li><strong>Automatic Detection</strong> - AI identifies multiple action items in complex text</li>
+                <li><strong>Individual Review</strong> - Each task can be edited or removed independently</li>
+                <li><strong>Batch Processing</strong> - Save all extracted tasks at once</li>
+                <li><strong>Smart Separation</strong> - AI distinguishes between different action items</li>
+            </ul>
+
+            <h3>Best Practices</h3>
+            <ul>
+                <li><strong>Include Context</strong> - Paste entire email threads or conversations for better task separation</li>
+                <li><strong>Personal Tasks Only</strong> - AI identifies tasks assigned to you specifically</li>
+                <li><strong>Review All Results</strong> - Check each extracted task before saving</li>
+                <li><strong>Remove Duplicates</strong> - Use the × button to remove unwanted tasks</li>
+                <li><strong>Provide Detail</strong> - More context helps AI extract and separate tasks accurately</li>
+            </ul>
+
+            <div class="tip">
+                <strong>💡 Pro Tip:</strong> When pasting email threads with multiple people and action items, the AI will extract all tasks relevant to you while ignoring tasks assigned to others. Each task appears as a separate, editable item.
+            </div>
+
+            <h3>AI Features</h3>
+            <ul>
+                <li><strong>Multiple Task Detection</strong> - Identifies and separates multiple action items</li>
+                <li><strong>Individual Task Management</strong> - Edit or remove specific tasks from the preview</li>
+                <li><strong>Automatic Retry</strong> - Up to 3 attempts if extraction fails</li>
+                <li><strong>Timeout Protection</strong> - Requests won't hang indefinitely</li>
+                <li><strong>Smart Validation</strong> - Ensures extracted content makes sense</li>
+                <li><strong>Error Recovery</strong> - Clear error messages help troubleshoot issues</li>
+            </ul>
+
+            <h3>Example Scenarios</h3>
+            <div class="feature-grid">
+                <div class="feature-box">
+                    <h4>📧 Email with Multiple Action Items</h4>
+                    <p>Paste an email containing several requests - AI extracts each as a separate task</p>
+                </div>
+                <div class="feature-box">
+                    <h4>📝 Meeting Notes</h4>
+                    <p>Extract all your action items from meeting minutes in one go</p>
+                </div>
+                <div class="feature-box">
+                    <h4>💬 Slack Conversation</h4>
+                    <p>Process entire conversation threads to find all tasks assigned to you</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="manual-section" id="data-management">
+            <h2>Data Management & Backup</h2>
+            
+            <p>TaskFlow AI provides comprehensive data export and import capabilities to help you backup your tasks, share data between devices, or migrate to other productivity tools.</p>
+            
+            <h3>📤 Exporting Your Data</h3>
+            <p>Access export options through <strong>Settings → Data Management</strong>. All export formats include your task data with creation dates, completion status, and metadata.</p>
+
+            <h4>Export Formats</h4>
+            <div class="feature-grid">
+                <div class="feature-box">
+                    <h4>📄 JSON (Full Backup)</h4>
+                    <p><strong>Best for:</strong> Complete backup and restoration</p>
+                    <ul>
+                        <li>All tasks with full metadata</li>
+                        <li>Configuration settings</li>
+                        <li>Name variations</li>
+                        <li>Export timestamp</li>
+                    </ul>
+                </div>
+                <div class="feature-box">
+                    <h4>📝 Markdown</h4>
+                    <p><strong>Best for:</strong> Human-readable task lists</p>
+                    <ul>
+                        <li>Organized by status (Active, Completed, Postponed)</li>
+                        <li>Checkbox format for task items</li>
+                        <li>Readable in any text editor</li>
+                        <li>Compatible with most note-taking apps</li>
+                    </ul>
+                </div>
+                <div class="feature-box">
+                    <h4>🔗 Obsidian Format</h4>
+                    <p><strong>Best for:</strong> Obsidian vault integration</p>
+                    <ul>
+                        <li>YAML frontmatter with metadata</li>
+                        <li>Obsidian task format with checkboxes</li>
+                        <li>Tags for AI-extracted vs manual tasks</li>
+                        <li>Date-based tags (#created/2024-01-15)</li>
+                        <li>Backlinks to related notes</li>
+                    </ul>
+                </div>
+                <div class="feature-box">
+                    <h4>📊 CSV Spreadsheet</h4>
+                    <p><strong>Best for:</strong> Data analysis and Excel</p>
+                    <ul>
+                        <li>Structured columns for all task fields</li>
+                        <li>Status, type, and date information</li>
+                        <li>Import into Excel, Google Sheets, etc.</li>
+                        <li>Perfect for reporting and analysis</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>📥 Importing Data</h3>
+            <p>Import tasks from various sources to migrate data or restore from backups. TaskFlow AI supports multiple formats with intelligent duplicate detection and detailed file preview.</p>
+
+            <h4>Supported Import Formats</h4>
+            <ul>
+                <li><strong>JSON</strong> - TaskFlow AI backup files (full restoration with configuration)</li>
+                <li><strong>Markdown (.md)</strong> - Standard markdown with checkbox task lists</li>
+                <li><strong>Obsidian Markdown</strong> - Files with YAML frontmatter, tags, and Obsidian task format</li>
+                <li><strong>CSV</strong> - Spreadsheet data with structured task columns</li>
+            </ul>
+
+            <h4>Import Process</h4>
+            <ol>
+                <li><strong>Choose File</strong> - Click "📁 Choose File to Import" in Settings → Data Management</li>
+                <li><strong>File Analysis</strong> - System automatically detects format and analyzes content</li>
+                <li><strong>Preview Details</strong> - Review comprehensive file information:
+                    <ul>
+                        <li>File name, type, and size</li>
+                        <li>Total tasks found</li>
+                        <li>Active vs completed task breakdown</li>
+                        <li>Original user and export date (if available)</li>
+                        <li>Format-specific details (Obsidian tags, CSV headers, etc.)</li>
+                    </ul>
+                </li>
+                <li><strong>Review Warnings</strong> - Check automatic notifications about:
+                    <ul>
+                        <li>Duplicate detection rules</li>
+                        <li>Large file processing time</li>
+                        <li>Format-specific considerations</li>
+                        <li>Missing or invalid data</li>
+                    </ul>
+                </li>
+                <li><strong>Confirm Import</strong> - Click "✅ Confirm Import" to process and add tasks</li>
+                <li><strong>Import Results</strong> - View detailed summary of imported vs skipped tasks</li>
+            </ol>
+
+            <div class="tip">
+                <strong>💡 Smart Import Features:</strong>
+                <ul>
+                    <li><strong>Duplicate Detection</strong> - Tasks with identical names are automatically skipped</li>
+                    <li><strong>Format Detection</strong> - Automatically recognizes Obsidian vs standard Markdown</li>
+                    <li><strong>Data Validation</strong> - Ensures imported data is clean and properly formatted</li>
+                    <li><strong>Import Statistics</strong> - Shows exactly what was imported and what was skipped</li>
+                </ul>
+            </div>
+
+            <h3>🔄 Migration Scenarios</h3>
+            
+            <h4>From Other Apps</h4>
+            <div class="feature-grid">
+                <div class="feature-box">
+                    <h4>📱 Todoist → TaskFlow AI</h4>
+                    <p>Export from Todoist as CSV, then import into TaskFlow AI</p>
+                </div>
+                <div class="feature-box">
+                    <h4>🏷️ Notion → TaskFlow AI</h4>
+                    <p>Export Notion database as CSV with task data</p>
+                </div>
+                <div class="feature-box">
+                    <h4>🧠 Obsidian → TaskFlow AI</h4>
+                    <p>Copy task lists from Obsidian notes directly</p>
+                </div>
+                <div class="feature-box">
+                    <h4>📋 Any App → Markdown</h4>
+                    <p>Most productivity apps can export to-do lists as Markdown</p>
+                </div>
+            </div>
+
+            <h4>Device Migration</h4>
+            <ul>
+                <li><strong>Full Backup</strong> - Export JSON on old device, import on new device</li>
+                <li><strong>Cloud Sync</strong> - Save export file to cloud storage, download on new device</li>
+                <li><strong>Email Transfer</strong> - Email backup file to yourself for easy transfer</li>
+            </ul>
+
+            <h3>⚠️ Import Considerations</h3>
+            <div class="warning">
+                <h4>Before Importing</h4>
+                <ul>
+                    <li><strong>Backup First</strong> - Always export your current tasks before importing</li>
+                    <li><strong>Check Format</strong> - Ensure your file is in a supported format</li>
+                    <li><strong>Review Content</strong> - Large imports may take time to process</li>
+                    <li><strong>Name Matching</strong> - Duplicate detection is based on task names</li>
+                </ul>
+            </div>
+
+            <h3>📋 Export/Import Best Practices</h3>
+            <ul>
+                <li><strong>Regular Backups</strong> - Export JSON weekly for complete data protection</li>
+                <li><strong>Cross-Platform Sharing</strong> - Use Markdown for sharing with non-TaskFlow users</li>
+                <li><strong>Data Analysis</strong> - Export CSV to analyze productivity patterns in Excel</li>
+                <li><strong>Obsidian Integration</strong> - Use Obsidian format to integrate with your knowledge vault</li>
+                <li><strong>Incremental Imports</strong> - Import new tasks regularly instead of large batches</li>
+                <li><strong>File Naming</strong> - Use descriptive names like "TaskFlow-Backup-2024-01-15.json"</li>
+            </ul>
+
+            <div class="note">
+                <strong>🔒 Privacy Note:</strong> All export/import operations happen locally in your browser. No data is sent to external servers except for AI processing when explicitly requested.
+            </div>
+        </section>
+
+        <section class="manual-section" id="settings">
+            <h2>Settings & Customization</h2>
+            
+            <p>Access settings by clicking the <strong>⚙️</strong> button in the top-right corner of the main interface.</p>
+            
+            <h3>Available Settings</h3>
+            
+            <div class="feature-grid">
+                <div class="feature-box">
+                    <h4>👤 Your Name</h4>
+                    <p>Update your name to change how AI identifies your tasks</p>
+                </div>
+                <div class="feature-box">
+                    <h4>🏷️ Name Variations</h4>
+                    <p>Manage nicknames and alternative names for better task recognition</p>
+                </div>
+                <div class="feature-box">
+                    <h4>🤖 AI Configuration</h4>
+                    <p>View current AI service and model (click "Reconfigure AI" to change)</p>
+                </div>
+                <div class="feature-box">
+                    <h4>📝 System Prompt</h4>
+                    <p>Customize AI task extraction behavior for multiple tasks</p>
+                </div>
+            </div>
+
+            <h3>Name Variations Management</h3>
+            <p>One of TaskFlow AI's most powerful features is its ability to recognize you by different names and nicknames:</p>
+            
+            <ul>
+                <li><strong>Automatic Discovery</strong> - During setup, AI automatically finds common variations of your name</li>
+                <li><strong>Manual Customization</strong> - Add, remove, or modify name variations in Settings</li>
+                <li><strong>AI Suggestions</strong> - Get AI-powered suggestions for additional name variations</li>
+                <li><strong>Smart Recognition</strong> - AI uses all variations when identifying tasks assigned to you</li>
+            </ul>
+
+            <div class="tip">
+                <strong>💡 Examples:</strong> If your name is "Robert", TaskFlow AI might recognize tasks assigned to "Bob", "Rob", "Bobby", or "Robbie". This works for any name - "Jennifer" becomes "Jen", "Jenny", "Jenn", etc.
+            </div>
+
+            <h3>System Prompt Customization</h3>
+            <p>The system prompt controls how AI interprets and extracts tasks from your text. This powerful feature allows you to:</p>
+            
+            <ul>
+                <li><strong>Fine-tune extraction</strong> - Add specific instructions for your workflow</li>
+                <li><strong>Multiple task handling</strong> - Control how AI separates and identifies multiple tasks</li>
+                <li><strong>Industry-specific rules</strong> - Tailor for legal, medical, or technical contexts</li>
+                <li><strong>Priority detection</strong> - Identify urgent vs. normal tasks automatically</li>
+                <li><strong>Custom fields</strong> - Extract additional information like deadlines or project codes</li>
+            </ul>
+
+            <div class="warning">
+                <h4>⚠️ Important: System Prompt Format</h4>
+                <p>Your custom prompt must instruct the AI to return valid JSON with these required fields:</p>
+                <p><strong>For single task:</strong></p>
+                <ul>
+                    <li><code>title</code> - Task title (string)</li>
+                    <li><code>description</code> - Brief summary (string)</li>
+                    <li><code>notes</code> - Additional details (string)</li>
+                </ul>
+                <p><strong>For multiple tasks:</strong></p>
+                <ul>
+                    <li><code>tasks</code> - Array of task objects, each with title, description, and notes</li>
+                </ul>
+            </div>
+
+            <h3>Example Custom Prompts</h3>
+            
+            <div class="tip">
+                <strong>For Project Managers:</strong><br>
+                <code>"Extract all tasks and identify project codes. Always include deadlines in the notes field. Prioritize tasks marked as 'urgent' or 'ASAP'. Return JSON with single task format or tasks array for multiple tasks."</code>
+            </div>
+
+            <div class="tip">
+                <strong>For Customer Support:</strong><br>
+                <code>"Extract all support tickets and customer requests. Include ticket numbers and customer names in notes. Flag escalations. Return JSON with single task format or tasks array for multiple items."</code>
+            </div>
+        </section>
+
+        <section class="manual-section" id="tips">
+            <h2>Tips & Tricks</h2>
+            
+            <h3>Productivity Tips</h3>
+            <ul>
+                <li><strong>Start Fresh Daily</strong> - Complete or postpone yesterday's tasks each morning</li>
+                <li><strong>Use AI for Meetings</strong> - Paste meeting notes to extract all your action items</li>
+                <li><strong>Batch Process Emails</strong> - Extract multiple tasks from complex email threads at once</li>
+                <li><strong>Review Extracted Tasks</strong> - Always check AI results and remove duplicates or irrelevant items</li>
+                <li><strong>Keep Descriptions Brief</strong> - Use the notes field for detailed information</li>
+                <li><strong>Use Keyboard Shortcuts</strong> - Speed up task creation with Ctrl+Q and Ctrl+E</li>
+            </ul>
+
+            <h3>Multiple Tasks Tips</h3>
+            <ul>
+                <li><strong>Paste Entire Conversations</strong> - AI works better with full context for task separation</li>
+                <li><strong>Remove Unwanted Tasks</strong> - Use the × button to delete tasks you don't need</li>
+                <li><strong>Edit Individual Tasks</strong> - Customize each extracted task before saving</li>
+                <li><strong>Check for Duplicates</strong> - AI may sometimes create similar tasks from the same text</li>
+                <li><strong>Save All at Once</strong> - The "Save All Tasks" button adds everything to your list efficiently</li>
+            </ul>
+
+            <h3>Data Management Tips</h3>
+            <ul>
+                <li><strong>Regular Backups</strong> - Export JSON files weekly to protect your data</li>
+                <li><strong>Use Descriptive Filenames</strong> - Name exports like "TaskFlow-Backup-2024-01-15.json"</li>
+                <li><strong>Cross-Platform Compatibility</strong> - Export Markdown to share with non-TaskFlow users</li>
+                <li><strong>Cloud Storage Integration</strong> - Save export files to Dropbox/Google Drive for device sync</li>
+                <li><strong>Import Testing</strong> - Try importing with a small file first to test compatibility</li>
+                <li><strong>Obsidian Integration</strong> - Use Obsidian export format to integrate with your knowledge management</li>
+            </ul>
+
+            <h3>Interface Tips</h3>
+            <ul>
+                <li><strong>Minimize Clutter</strong> - Completed and postponed sections auto-hide</li>
+                <li><strong>Quick Actions</strong> - Use checkboxes for fast task completion</li>
+                <li><strong>Settings Access</strong> - Click ⚙️ in the top-right to adjust configuration</li>
+                <li><strong>Auto-Save</strong> - Tasks are automatically saved every 30 seconds</li>
+                <li><strong>Smart Notifications</strong> - Success and error messages keep you informed</li>
+            </ul>
+
+            <h3>Advanced Features</h3>
+            <ul>
+                <li><strong>Task Metadata</strong> - View creation and modification times in task details</li>
+                <li><strong>Smart Display</strong> - Recent tasks appear first, with intelligent date formatting</li>
+                <li><strong>Error Recovery</strong> - Automatic retries and graceful error handling</li>
+                <li><strong>Data Safety</strong> - Configuration validation prevents corruption</li>
+            </ul>
+        </section>
+
+        <section class="manual-section" id="troubleshooting">
+            <h2>Troubleshooting</h2>
+            
+            <h3>Common Issues</h3>
+            
+            <div class="warning">
+                <h4>AI Connection Failed</h4>
+                <ul>
+                    <li>Verify your API endpoint is correct</li>
+                    <li>Check that your API key is valid (OpenAI)</li>
+                    <li>Ensure Ollama is running (if using Ollama)</li>
+                    <li>Try the connection test in Settings → "Reconfigure AI"</li>
+                    <li>Check your internet connection</li>
+                </ul>
+            </div>
+
+            <div class="warning">
+                <h4>Tasks Not Saving</h4>
+                <ul>
+                    <li>Check browser's local storage isn't full</li>
+                    <li>Ensure cookies/storage are enabled</li>
+                    <li>Try refreshing the page</li>
+                    <li>Clear browser cache and restart</li>
+                </ul>
+            </div>
+
+            <div class="warning">
+                <h4>AI Extraction Fails or No Multiple Tasks Found</h4>
+                <ul>
+                    <li>Ensure your text contains actionable content with multiple distinct items</li>
+                    <li>Try with more detailed or longer text for better context</li>
+                    <li>Check your system prompt in Settings (ensure it supports multiple tasks)</li>
+                    <li>Verify your AI service is responding</li>
+                    <li>Try pasting entire email threads instead of snippets</li>
+                </ul>
+            </div>
+
+            <div class="warning">
+                <h4>Import/Export Issues</h4>
+                <ul>
+                    <li><strong>Export Download Fails</strong> - Check browser download settings and popup blockers</li>
+                    <li><strong>Import File Not Recognized</strong> - Verify file format (.json, .md, .csv) and contents</li>
+                    <li><strong>Import Shows Zero Tasks</strong> - Check if file contains proper task format or data</li>
+                    <li><strong>CSV Import Errors</strong> - Ensure CSV has proper headers and is comma-separated</li>
+                    <li><strong>Large File Issues</strong> - Break large imports into smaller chunks</li>
+                </ul>
+            </div>
+
+            <div class="warning">
+                <h4>Name Variations Not Working</h4>
+                <ul>
+                    <li>Check your name variations in Settings are correct and complete</li>
+                    <li>Use "Get AI Suggestions" to find additional name variations</li>
+                    <li>Ensure variations are separated by commas</li>
+                    <li>Try including both formal and informal versions of your name</li>
+                    <li>Remember variations are case-insensitive</li>
+                </ul>
+            </div>
+
+            <h3>Multiple Tasks Issues</h3>
+            <ul>
+                <li><strong>AI Only Finds One Task</strong> - Try providing more context or explicitly mention multiple action items</li>
+                <li><strong>Duplicate Tasks</strong> - Review extracted tasks and remove duplicates before saving</li>
+                <li><strong>Tasks Missing Context</strong> - Include more surrounding text to help AI understand relationships</li>
+                <li><strong>Wrong Tasks Extracted</strong> - Verify your name is correct in settings so AI identifies your tasks properly</li>
+            </ul>
+
+            <h3>Data Management Issues</h3>
+            <ul>
+                <li><strong>Backup Restore Fails</strong> - Ensure JSON file is from TaskFlow AI and not corrupted</li>
+                <li><strong>Markdown Import Empty</strong> - Check that markdown contains checkbox format tasks (- [ ] or - [x])</li>
+                <li><strong>CSV Format Issues</strong> - Verify headers match expected format (Name, Description, Status, etc.)</li>
+                <li><strong>Obsidian Import Problems</strong> - Ensure file contains proper YAML frontmatter and task format</li>
+            </ul>
+
+            <h3>Performance Issues</h3>
+            <ul>
+                <li><strong>Slow Loading</strong> - Clear browser cache or try incognito mode</li>
+                <li><strong>High Memory Usage</strong> - The app limits displayed tasks to prevent issues</li>
+                <li><strong>Unresponsive UI</strong> - Refresh the page to reset the application state</li>
+                <li><strong>Large Export Files</strong> - Consider exporting tasks in smaller date ranges</li>
+            </ul>
+
+            <h3>Data & Privacy</h3>
+            <ul>
+                <li>All tasks are stored locally in your browser</li>
+                <li>No data is sent to external servers (except AI queries)</li>
+                <li>API keys are stored securely in browser storage</li>
+                <li>Clear browser data to reset everything</li>
+                <li>Export tasks by copying from the interface</li>
+                <li>Import/export happens locally - no cloud processing</li>
+            </ul>
+
+            <h3>Getting Help</h3>
+            <ul>
+                <li><strong>Check Browser Console</strong> - Look for error messages in developer tools</li>
+                <li><strong>Try Different Browser</strong> - Test in Chrome, Firefox, or Safari</li>
+                <li><strong>Reset Configuration</strong> - Use "Reconfigure AI" in Settings to start fresh</li>
+                <li><strong>Clear All Data</strong> - Clear browser storage to completely reset the app</li>
+                <li><strong>Test With Sample Data</strong> - Try exporting/importing with a small test file first</li>
+            </ul>
+        </section>
+
+        <section class="manual-section" id="shortcuts">
+            <h2>Quick Reference</h2>
+            
+            <h3>Keyboard Shortcuts</h3>
+            <table>
+                <tr>
+                    <th>Shortcut</th>
+                    <th>Action</th>
+                </tr>
+                <tr>
+                    <td><kbd>Ctrl+Q</kbd> / <kbd>Cmd+Q</kbd></td>
+                    <td>Open Quick Task modal</td>
+                </tr>
+                <tr>
+                    <td><kbd>Ctrl+E</kbd> / <kbd>Cmd+E</kbd></td>
+                    <td>Open AI Extract Task modal</td>
+                </tr>
+                <tr>
+                    <td><kbd>Ctrl+,</kbd> / <kbd>Cmd+,</kbd></td>
+                    <td>Open Settings</td>
+                </tr>
+                <tr>
+                    <td><kbd>Esc</kbd></td>
+                    <td>Close any open modal</td>
+                </tr>
+            </table>
+            
+            <h3>Task Actions by State</h3>
+            <table>
+                <tr>
+                    <th>Task State</th>
+                    <th>Available Actions</th>
+                </tr>
+                <tr>
+                    <td>Active (Today)</td>
+                    <td>Edit, Complete, Postpone</td>
+                </tr>
+                <tr>
+                    <td>Completed</td>
+                    <td>Copy to Today, Delete</td>
+                </tr>
+                <tr>
+                    <td>Postponed</td>
+                    <td>Move to Today, Delete</td>
+                </tr>
+            </table>
+
+            <h3>AI Services Supported</h3>
+            <table>
+                <tr>
+                    <th>Service</th>
+                    <th>Requirements</th>
+                    <th>Features</th>
+                </tr>
+                <tr>
+                    <td>Ollama</td>
+                    <td>Local installation, running server</td>
+                    <td>Auto-detects models, no API key needed, multiple tasks</td>
+                </tr>
+                <tr>
+                    <td>OpenAI</td>
+                    <td>API key, internet connection</td>
+                    <td>GPT models, high accuracy, multiple tasks</td>
+                </tr>
+                <tr>
+                    <td>Open WebUI</td>
+                    <td>Open WebUI instance, API key</td>
+                    <td>Unified access to multiple AI models, OpenAI-compatible, multiple tasks</td>
+                </tr>
+            </table>
+
+            <h3>Export/Import Formats</h3>
+            <table>
+                <tr>
+                    <th>Format</th>
+                    <th>Best For</th>
+                    <th>Features</th>
+                </tr>
+                <tr>
+                    <td>JSON</td>
+                    <td>Complete backup & restore</td>
+                    <td>Full data, settings, metadata</td>
+                </tr>
+                <tr>
+                    <td>Markdown</td>
+                    <td>Human-readable sharing</td>
+                    <td>Checkbox tasks, cross-platform</td>
+                </tr>
+                <tr>
+                    <td>Obsidian</td>
+                    <td>Knowledge management integration</td>
+                    <td>YAML frontmatter, tags, backlinks</td>
+                </tr>
+                <tr>
+                    <td>CSV</td>
+                    <td>Spreadsheet analysis</td>
+                    <td>Structured data, Excel compatible</td>
+                </tr>
+            </table>
+
+            <h3>Multiple Tasks Features</h3>
+            <table>
+                <tr>
+                    <th>Feature</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>Auto-Detection</td>
+                    <td>AI automatically identifies multiple tasks in text</td>
+                </tr>
+                <tr>
+                    <td>Individual Editing</td>
+                    <td>Edit each extracted task independently</td>
+                </tr>
+                <tr>
+                    <td>Task Removal</td>
+                    <td>Remove unwanted tasks before saving</td>
+                </tr>
+                <tr>
+                    <td>Batch Save</td>
+                    <td>Save all tasks at once with one click</td>
+                </tr>
+            </table>
+        </section>
+    </div>
+
+    <a href="index.html" class="back-button">← Back to TaskFlow</a>
+</body>
+</html>

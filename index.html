@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskFlow AI - Smart Task Management</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
+
+    <!-- Onboarding Flow -->
+    <div class="onboarding-overlay" id="onboardingOverlay">
+        <div class="onboarding-container">
+            <div id="onboardingContent">
+                <!-- Step 1: Welcome & Name -->
+                <div class="onboarding-step" id="step1">
+                    <h1 class="onboarding-title">Welcome to TaskFlow AI</h1>
+                    <p class="onboarding-subtitle">Let's get you set up in just a few steps</p>
+                    
+                    <div class="form-group">
+                        <label for="userName">What's your name?</label>
+                        <input type="text" id="userName" placeholder="Enter your name..." required />
+                        <p class="input-hint">We'll use this to personalize your experience and identify tasks that belong to you</p>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="nextStep(1)">Continue</button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Choose Service -->
+                <div class="onboarding-step" id="step2" style="display: none;">
+                    <h2 class="onboarding-title">Choose Your AI Service</h2>
+                    <p class="onboarding-subtitle">Select which AI service you'd like to use</p>
+                    
+                    <div class="service-options">
+                        <button class="service-option" onclick="selectService('ollama')">
+                            <div class="service-icon">🦙</div>
+                            <h3>Ollama</h3>
+                            <p>Local or self-hosted AI models</p>
+                        </button>
+                        <button class="service-option" onclick="selectService('openai')">
+                            <div class="service-icon">🤖</div>
+                            <h3>OpenAI</h3>
+                            <p>GPT models via API</p>
+                        </button>
+                        <button class="service-option" onclick="selectService('openwebui')">
+                            <div class="service-icon">🌐</div>
+                            <h3>Open WebUI</h3>
+                            <p>Unified interface for multiple AI models</p>
+                        </button>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-secondary" onclick="previousStep(2)">Back</button>
+                    </div>
+                </div>
+
+                <!-- Step 3A: Ollama Configuration -->
+                <div class="onboarding-step" id="step3-ollama" style="display: none;">
+                    <h2 class="onboarding-title">Configure Ollama</h2>
+                    <p class="onboarding-subtitle">Enter your Ollama server address</p>
+                    
+                    <div class="form-group">
+                        <label for="ollamaUrl">Ollama Server URL</label>
+                        <input type="text" id="ollamaUrl" placeholder="e.g., localhost:11434 or 192.168.1.100:11434" />
+                        <p class="input-hint">Just enter the address, we'll handle the rest</p>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="testOllamaConnection()">
+                            <span id="testOllamaBtn">Test Connection</span>
+                        </button>
+                        <button class="btn btn-secondary" onclick="previousStep(3)">Back</button>
+                    </div>
+                    
+                    <div class="connection-status" id="ollamaStatus"></div>
+                </div>
+
+                <!-- Step 3B: OpenAI Configuration -->
+                <div class="onboarding-step" id="step3-openai" style="display: none;">
+                    <h2 class="onboarding-title">Configure OpenAI</h2>
+                    <p class="onboarding-subtitle">Enter your API key and optionally customize the endpoint</p>
+                    
+                    <div class="form-group">
+                        <label for="openaiKey">OpenAI API Key</label>
+                        <input type="password" id="openaiKey" placeholder="sk-..." required />
+                        <p class="input-hint">Your API key is stored locally and never sent to our servers</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="openaiEndpoint">API Endpoint (Optional)</label>
+                        <input type="url" id="openaiEndpoint" placeholder="https://api.openai.com/v1/chat/completions" />
+                        <p class="input-hint">Leave empty for default OpenAI endpoint</p>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="nextStep(3)">Continue</button>
+                        <button class="btn btn-secondary" onclick="previousStep(3)">Back</button>
+                    </div>
+                </div>
+
+                <!-- Step 3C: Open WebUI Configuration -->
+                <div class="onboarding-step" id="step3-openwebui" style="display: none;">
+                    <h2 class="onboarding-title">Configure Open WebUI</h2>
+                    <p class="onboarding-subtitle">Enter your Open WebUI server details</p>
+                    
+                    <div class="form-group">
+                        <label for="openwebuiUrl">Open WebUI Server URL</label>
+                        <input type="text" id="openwebuiUrl" placeholder="e.g., localhost:3000 or https://openwebui.example.com" />
+                        <p class="input-hint">Your Open WebUI server address</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="openwebuiKey">API Key</label>
+                        <input type="password" id="openwebuiKey" placeholder="Your Open WebUI API key" required />
+                        <p class="input-hint">Get your API key from Settings > Account in Open WebUI</p>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="testOpenWebUIConnection()">
+                            <span id="testOpenWebUIBtn">Test Connection</span>
+                        </button>
+                        <button class="btn btn-secondary" onclick="previousStep(3)">Back</button>
+                    </div>
+                    
+                    <div class="connection-status" id="openwebuiStatus"></div>
+                </div>
+
+                <!-- Step 4A: Ollama Model Selection -->
+                <div class="onboarding-step" id="step4-ollama" style="display: none;">
+                    <h2 class="onboarding-title">Select Model</h2>
+                    <p class="onboarding-subtitle">Choose which Ollama model to use</p>
+                    
+                    <div class="form-group">
+                        <label for="ollamaModelSelect">Available Models</label>
+                        <select id="ollamaModelSelect" size="6">
+                            <option value="">Loading models...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="nextStep(4)">Continue</button>
+                        <button class="btn btn-secondary" onclick="previousStep(4)">Back</button>
+                    </div>
+                </div>
+
+                <!-- Step 4B: OpenAI Model Selection -->
+                <div class="onboarding-step" id="step4-openai" style="display: none;">
+                    <h2 class="onboarding-title">Select Model</h2>
+                    <p class="onboarding-subtitle">Choose which OpenAI model to use</p>
+                    
+                    <div class="model-options">
+                        <label class="model-option">
+                            <input type="radio" name="openaiModel" value="gpt-4o-mini" checked />
+                            <div class="model-card">
+                                <h4>GPT-4o Mini</h4>
+                                <p>Fast and cost-effective</p>
+                            </div>
+                        </label>
+                        <label class="model-option">
+                            <input type="radio" name="openaiModel" value="gpt-4o" />
+                            <div class="model-card">
+                                <h4>GPT-4o</h4>
+                                <p>Most capable model</p>
+                            </div>
+                        </label>
+                        <label class="model-option">
+                            <input type="radio" name="openaiModel" value="gpt-3.5-turbo" />
+                            <div class="model-card">
+                                <h4>GPT-3.5 Turbo</h4>
+                                <p>Legacy fast model</p>
+                            </div>
+                        </label>
+                        <label class="model-option">
+                            <input type="radio" name="openaiModel" value="custom" />
+                            <div class="model-card">
+                                <h4>Custom Model</h4>
+                                <input type="text" id="customModelName" placeholder="Enter model name..." onclick="document.querySelector('input[value=custom]').checked = true" />
+                            </div>
+                        </label>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="nextStep(4)">Continue</button>
+                        <button class="btn btn-secondary" onclick="previousStep(4)">Back</button>
+                    </div>
+                </div>
+
+                <!-- Step 4C: Open WebUI Model Selection -->
+                <div class="onboarding-step" id="step4-openwebui" style="display: none;">
+                    <h2 class="onboarding-title">Select Model</h2>
+                    <p class="onboarding-subtitle">Choose which model to use from Open WebUI</p>
+                    
+                    <div class="form-group">
+                        <label for="openwebuiModelSelect">Available Models</label>
+                        <select id="openwebuiModelSelect" size="6">
+                            <option value="">Loading models...</option>
+                        </select>
+                        <p class="input-hint">These models are available through your Open WebUI instance</p>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="nextStep(4)">Continue</button>
+                        <button class="btn btn-secondary" onclick="previousStep(4)">Back</button>
+                    </div>
+                </div>
+
+                <!-- Step 5: Test Configuration -->
+                <div class="onboarding-step" id="step5" style="display: none;">
+                    <h2 class="onboarding-title">Test Configuration</h2>
+                    <p class="onboarding-subtitle">Let's make sure everything is working correctly</p>
+                    
+                    <div class="test-status" id="testStatus">
+                        <div class="test-item" id="testConnection">
+                            <span class="test-icon">⏳</span>
+                            <span>Testing connection...</span>
+                        </div>
+                        <div class="test-item" id="testModel">
+                            <span class="test-icon">⏳</span>
+                            <span>Verifying model...</span>
+                        </div>
+                        <div class="test-item" id="testComplete">
+                            <span class="test-icon">⏳</span>
+                            <span>Finalizing setup...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="button-group" id="testButtons" style="display: none;">
+                        <button class="btn btn-primary" onclick="completeOnboarding()">Start Using TaskFlow AI</button>
+                        <button class="btn btn-secondary" onclick="previousStep(5)">Back</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div class="container" id="mainApp" style="display: none;">
+        <header>
+            <h1>TaskFlow AI</h1>
+            <p class="subtitle">Welcome, <span id="userGreeting"></span>!</p>
+            <button class="settings-btn" onclick="openSettings()" title="Settings">⚙️</button>
+            <a href="manual.html" class="help-btn" title="User Manual">?</a>
+        </header>
+
+        <div class="task-buttons">
+            <button class="add-task-btn quick-task" onclick="openModal('quick')">
+                <span class="btn-icon">✓</span>
+                Quick Task
+            </button>
+            <button class="add-task-btn ai-task" onclick="openModal('ai')">
+                <span class="btn-icon">✨</span>
+                AI Extract Task
+            </button>
+        </div>
+
+        <div class="tasks-layout">
+            <!-- Active Tasks -->
+            <div class="tasks-container">
+                <h2 class="date-header">Today's Tasks</h2>
+                <div id="tasksList"></div>
+                
+                <!-- Task Status Buttons -->
+                <div class="task-status-buttons">
+                    <button class="status-btn completed-btn" onclick="toggleCompletedTasks()">
+                        <span class="status-icon">✓</span>
+                        <span class="status-label">Completed</span>
+                        <span class="status-count" id="completedCount">0</span>
+                    </button>
+                    
+                    <button class="status-btn postponed-btn" onclick="togglePostponedTasks()">
+                        <span class="status-icon">⏰</span>
+                        <span class="status-label">Postponed</span>
+                        <span class="status-count" id="postponedCount">0</span>
+                    </button>
+                </div>
+                
+                <!-- Expandable Sections -->
+                <div class="expandable-section" id="completedSection" style="display: none;">
+                    <h3 class="section-header">Completed Tasks</h3>
+                    <div id="completedTasksList" class="section-tasks"></div>
+                </div>
+                
+                <div class="expandable-section" id="postponedSection" style="display: none;">
+                    <h3 class="section-header">Postponed Tasks</h3>
+                    <div id="postponedTasksList" class="section-tasks"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Containers -->
+    <!-- Quick Task Modal -->
+    <div class="modal-overlay" id="quickModalOverlay">
+        <div class="modal">
+            <h2>Quick Task</h2>
+            <form id="quickTaskForm" onsubmit="saveQuickTask(event)">
+                <div class="form-group">
+                    <label for="quickTaskName">Task Name</label>
+                    <input type="text" name="quickTaskName" id="quickTaskName" required />
+                </div>
+                
+                <div class="form-group">
+                    <label for="quickTaskDescription">Description</label>
+                    <textarea name="quickTaskDescription" id="quickTaskDescription" placeholder="Brief description of the task..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="quickTaskNotes">Additional Notes</label>
+                    <textarea name="quickTaskNotes" id="quickTaskNotes" placeholder="Links, references, additional details..."></textarea>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="btn btn-primary">Save Task</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('quick')">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- AI Task Modal -->
+    <div class="modal-overlay" id="aiModalOverlay">
+        <div class="modal modal-large">
+            <h2>Extract Task from Text</h2>
+            <p class="modal-subtitle">Paste an email, Slack message, or any text containing task information</p>
+            
+            <form id="aiTaskForm" onsubmit="extractTask(event)">
+                <div class="form-group">
+                    <label for="aiTaskInput">Paste your text here</label>
+                    <textarea name="aiTaskInput" id="aiTaskInput" placeholder="Paste email, message, or any text that contains task information..." required></textarea>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="btn btn-primary">
+                        <span id="extractButtonText">Extract Task with AI</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('ai')">Cancel</button>
+                </div>
+            </form>
+
+            <!-- Extracted Task Preview -->
+            <div id="extractedTaskPreview" style="display: none;">
+                <h3>Extracted Tasks</h3>
+                <div class="extracted-task-content" id="extractedTaskContent">
+                    <!-- Dynamic content will be inserted here -->
+                </div>
+                <div class="button-group">
+                    <button type="button" class="btn btn-primary" onclick="saveExtractedTasks()">Save All Tasks</button>
+                    <button type="button" class="btn btn-secondary" onclick="resetAiModal()">Extract Another</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModalOverlay">
+        <div class="modal modal-large">
+            <h2>Settings</h2>
+            <div class="settings-content" id="settingsContent">
+                <!-- Settings content will be dynamically generated -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Task Modal -->
+    <div class="modal-overlay" id="editModalOverlay">
+        <div class="modal">
+            <h2>Edit Task</h2>
+            <form id="editTaskForm">
+                <div class="form-group">
+                    <label for="editTaskName">Task Name</label>
+                    <input type="text" id="editTaskName" required />
+                </div>
+                
+                <div class="form-group">
+                    <label for="editTaskDescription">Description</label>
+                    <textarea id="editTaskDescription"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editTaskNotes">Additional Notes</label>
+                    <textarea id="editTaskNotes"></textarea>
+                </div>
+
+                <div class="button-group" id="editButtonGroup">
+                    <!-- Buttons will be dynamically inserted based on task state -->
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Load Modular JavaScript -->
+    <script type="module" src="main.js"></script>
+    
+    <!-- Fallback for browsers that don't support modules -->
+    <script nomodule>
+        alert('This application requires a modern browser that supports ES6 modules. Please update your browser.');
+    </script>
+</body>
+</html>

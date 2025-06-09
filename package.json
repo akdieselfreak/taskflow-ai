@@ -1,0 +1,36 @@
+{
+  "name": "taskflow-ai",
+  "version": "1.0.0",
+  "description": "AI-powered task management with multiple deployment options",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "dev:cloud": "BUILD_TARGET=cloud python3 -m http.server 8000",
+    "dev:local": "BUILD_TARGET=local python3 -m http.server 8000",
+    "build": "npm run build:local && npm run build:cloud",
+    "build:cloud": "BUILD_TARGET=cloud node build-scripts/build.js",
+    "build:local": "BUILD_TARGET=local node build-scripts/build.js",
+    "serve:cloud": "cd dist/cloud && python3 -m http.server 8080",
+    "serve:local": "cd dist/local && python3 -m http.server 8080",
+    "docker:build": "docker build -t taskflow-ai-local .",
+    "docker:run": "docker run -p 8080:80 taskflow-ai-local"
+  },
+  "keywords": [
+    "task-management",
+    "ai",
+    "productivity",
+    "ollama",
+    "openai"
+  ],
+  "author": "TaskFlow AI Team",
+  "license": "MIT",
+  "devDependencies": {
+    "fs-extra": "^11.1.1",
+    "html-minifier": "^4.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/taskflow-ai.git"
+  },
+  "homepage": "https://taskflow.ai"
+}
