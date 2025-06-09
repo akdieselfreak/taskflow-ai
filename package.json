@@ -6,12 +6,13 @@
   "scripts": {
     "dev": "python3 -m http.server 8000",
     "start": "python3 -m http.server 8000",
-    "docker:build": "docker build -t taskflow-ai .",
-    "docker:run": "docker run -p 8080:80 taskflow-ai",
-    "docker:up": "docker-compose up -d",
-    "docker:down": "docker-compose down",
-    "docker:logs": "docker-compose logs -f",
-    "docker:with-ollama": "docker-compose --profile with-ollama up -d"
+    "docker:build": "docker build -t akdieselfreak/taskflow-ai:latest .",
+    "docker:build-dev": "docker build -t akdieselfreak/taskflow-ai:dev .",
+    "docker:push": "docker push akdieselfreak/taskflow-ai:latest",
+    "docker:push-dev": "docker push akdieselfreak/taskflow-ai:dev",
+    "docker:dev": "docker-compose -f docker-compose.dev.yml up -d",
+    "docker:dev-down": "docker-compose -f docker-compose.dev.yml down",
+    "docker:dev-logs": "docker-compose -f docker-compose.dev.yml logs -f"
   },
   "keywords": [
     "task-management",

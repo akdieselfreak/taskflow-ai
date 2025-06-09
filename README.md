@@ -83,39 +83,28 @@ npm run dev
 
 ### Docker Deployment (Recommended)
 
-#### Quick Start with Docker Compose
+#### Quick Start - No Build Required
 ```bash
-# Start TaskFlow AI only
-npm run docker:up
+# Download and start TaskFlow AI
+docker-compose up -d
 
-# Start with Ollama for local AI
-npm run docker:with-ollama
+# Or with Ollama for local AI
+docker-compose --profile with-ollama up -d
 
 # Access at http://localhost:8080
 ```
 
-#### Manual Docker Build
+#### One-Line Deployment
 ```bash
-# Build the image
-npm run docker:build
-
-# Run the container
-npm run docker:run
-
-# Access at http://localhost:8080
+# Just download docker-compose.yml and run:
+curl -O https://raw.githubusercontent.com/akdieselfreak/taskflow-ai/main/docker-compose.yml
+docker-compose up -d
 ```
 
-#### Docker Commands
+#### Development with Docker
 ```bash
-# View logs
-npm run docker:logs
-
-# Stop containers
-npm run docker:down
-
-# Build and run manually
-docker build -t taskflow-ai .
-docker run -p 8080:80 taskflow-ai
+# For development with live reload
+docker-compose -f docker-compose.dev.yml up -d
 ```
 
 ### Static Hosting

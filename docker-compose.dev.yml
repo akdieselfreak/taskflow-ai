@@ -2,12 +2,12 @@ version: '3.8'
 
 services:
   taskflow-ai:
-    image: akdieselfreak/taskflow-ai:latest
-    container_name: taskflow-ai
+    build: .
+    container_name: taskflow-ai-dev
     ports:
       - "8080:80"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
@@ -17,11 +17,21 @@ services:
       start_period: 40s
     networks:
       - taskflow-network
+    volumes:
+      # Mount source for development
+      - ./index.html:/usr/share/nginx/html/index.html:ro
+      - ./main.js:/usr/share/nginx/html/main.js:ro
+      - ./manual.html:/usr/share/nginx/html/manual.html:ro
+      - ./styles.css:/usr/share/nginx/html/styles.css:ro
+      - ./core:/usr/share/nginx/html/core:ro
+      - ./features:/usr/share/nginx/html/features:ro
+      - ./services:/usr/share/nginx/html/services:ro
+      - ./ui:/usr/share/nginx/html/ui:ro
 
   # Optional: Include Ollama service for local AI
   ollama:
     image: ollama/ollama:latest
-    container_name: taskflow-ollama
+    container_name: taskflow-ollama-dev
     ports:
       - "11434:11434"
     volumes:

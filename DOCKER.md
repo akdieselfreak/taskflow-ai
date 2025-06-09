@@ -6,26 +6,38 @@ TaskFlow AI is containerized using Docker with nginx as the web server. This pro
 
 ## Quick Start
 
-### Option 1: Docker Compose (Recommended)
+### Option 1: One-Line Deployment (Recommended)
 ```bash
-# Start TaskFlow AI only
+# Download and start - no build required
+curl -O https://raw.githubusercontent.com/akdieselfreak/taskflow-ai/main/docker-compose.yml
 docker-compose up -d
-
-# Or start with Ollama for local AI support
-docker-compose --profile with-ollama up -d
 
 # Access at http://localhost:8080
 ```
 
-### Option 2: Docker Build & Run
+### Option 2: With Ollama for Local AI
 ```bash
-# Build the image
-docker build -t taskflow-ai .
+# Download docker-compose.yml first, then:
+docker-compose --profile with-ollama up -d
 
-# Run the container
-docker run -p 8080:80 taskflow-ai
+# TaskFlow AI: http://localhost:8080
+# Ollama API: http://localhost:11434
+```
+
+### Option 3: Direct Docker Run
+```bash
+# Run pre-built image directly
+docker run -d -p 8080:80 --name taskflow-ai akdieselfreak/taskflow-ai:latest
 
 # Access at http://localhost:8080
+```
+
+### Option 4: Development Build
+```bash
+# Clone repository and build locally
+git clone https://github.com/akdieselfreak/taskflow-ai.git
+cd taskflow-ai
+docker-compose -f docker-compose.dev.yml up -d
 ```
 
 ## Container Architecture
