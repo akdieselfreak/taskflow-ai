@@ -101,27 +101,26 @@ export class AIService {
             // Handle both single task and multiple tasks responses
             if (taskData.tasks && Array.isArray(taskData.tasks)) {
                 // Multiple tasks format - validate each task
-                if (taskData.tasks.length === 0) {
-                    throw new Error('AI found no tasks in the provided text');
-                }
-                
                 const validTasks = taskData.tasks.filter(task => task.title || task.description);
-                if (validTasks.length === 0) {
-                    throw new Error('AI could not extract valid tasks from the provided text');
-                }
                 
+                // Return empty array if no valid tasks found - this is normal for notes without tasks
                 return { tasks: validTasks };
             } else if (taskData.title || taskData.description) {
                 // Single task format
                 return taskData;
             } else {
-                throw new Error('AI could not extract any clear tasks from the provided text');
+                // No tasks found - return empty array instead of throwing error
+                return { tasks: [] };
             }
         } catch (e) {
             if (e instanceof SyntaxError) {
-                throw new Error('Invalid task format returned by AI. Please try again with different text.');
+                // JSON parsing failed - this is normal when no tasks are found
+                Logger.warn('Failed to parse AI response as JSON, assuming no tasks found:', content);
+                return { tasks: [] };
             }
-            throw e;
+            // For other errors, still return empty tasks instead of throwing
+            Logger.warn('Unexpected error in parseTaskData, assuming no tasks found:', e.message);
+            return { tasks: [] };
         }
     }
 }
