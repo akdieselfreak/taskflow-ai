@@ -4,8 +4,7 @@ services:
   taskflow-ai:
     build: .
     container_name: taskflow-ai
-    ports:
-      - "8080:80"
+    network_mode: host
     environment:
       - NODE_ENV=production
     restart: unless-stopped
@@ -15,8 +14,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    networks:
-      - taskflow-network
 
 networks:
   taskflow-network:

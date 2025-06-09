@@ -140,9 +140,25 @@ docker-compose logs taskflow-ai
 sudo systemctl status docker
 ```
 
+### Can't Connect to Local Ollama
+If TaskFlow AI can't connect to Ollama running on the same machine:
+
+**Problem**: Docker containers can't access `localhost` services on the host
+
+**Solution 1 - Host Network Mode (Recommended)**:
+The docker-compose.yml is configured to use `network_mode: host` which allows the container to access localhost services.
+
+**Solution 2 - Use Host IP**:
+Instead of `http://localhost:11434`, use your machine's IP:
+- Find your IP: `ip addr show` or `ifconfig`
+- Use: `http://YOUR_IP:11434/api/chat`
+
+**Solution 3 - Docker Desktop (Mac/Windows)**:
+Use the special hostname: `http://host.docker.internal:11434/api/chat`
+
 ### Can't Access Application
 1. Check if container is running: `docker-compose ps`
-2. Check port mapping: `docker-compose port taskflow-ai 80`
+2. Check port mapping (if not using host mode): `docker-compose port taskflow-ai 80`
 3. Check firewall settings
 4. Try accessing: `curl http://localhost:8080`
 
