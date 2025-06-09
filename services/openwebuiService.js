@@ -65,7 +65,7 @@ export class OpenWebUIService extends AIService {
         }
     }
 
-    parseResponse(data) {
+    parseResponse(data, options = {}) {
         this.validateResponse(data);
         
         // Open WebUI typically follows OpenAI format
@@ -78,6 +78,12 @@ export class OpenWebUIService extends AIService {
             throw new Error('No content in Open WebUI response');
         }
 
+        // If expecting raw text (like for summaries), return as-is
+        if (options.rawResponse) {
+            return content;
+        }
+
+        // Otherwise, parse as task data
         return AIService.parseTaskData(content);
     }
 

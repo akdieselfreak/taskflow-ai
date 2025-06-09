@@ -25,8 +25,8 @@ export class OpenAIService extends AIService {
             temperature: options.temperature || 0.3
         };
 
-        // Add response format for JSON if supported
-        if (options.requireJson !== false) {
+        // Add response format for JSON if not asking for raw response
+        if (!options.rawResponse && options.requireJson !== false) {
             requestBody.response_format = { type: "json_object" };
         }
 
@@ -69,7 +69,7 @@ export class OpenAIService extends AIService {
         }
     }
 
-    parseResponse(data) {
+    parseResponse(data, options = {}) {
         this.validateResponse(data);
         
         if (!data.choices || !data.choices[0]) {
@@ -81,6 +81,12 @@ export class OpenAIService extends AIService {
             throw new Error('No content in OpenAI response');
         }
 
+        // If expecting raw text (like for summaries), return as-is
+        if (options.rawResponse) {
+            return content;
+        }
+
+        // Otherwise, parse as task data
         return AIService.parseTaskData(content);
     }
 

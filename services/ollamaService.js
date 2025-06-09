@@ -21,9 +21,13 @@ export class OllamaService extends AIService {
                     content: prompt
                 }
             ],
-            stream: false,
-            format: 'json'
+            stream: false
         };
+
+        // Only request JSON format if not asking for raw response
+        if (!options.rawResponse) {
+            requestBody.format = 'json';
+        }
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), options.timeout);
@@ -49,7 +53,7 @@ export class OllamaService extends AIService {
         }
     }
 
-    parseResponse(data) {
+    parseResponse(data, options = {}) {
         this.validateResponse(data);
         
         const content = data.message?.content || data.response;
@@ -57,6 +61,12 @@ export class OllamaService extends AIService {
             throw new Error('No content in Ollama response');
         }
 
+        // If expecting raw text (like for summaries), return as-is
+        if (options.rawResponse) {
+            return content;
+        }
+
+        // Otherwise, parse as task data
         return AIService.parseTaskData(content);
     }
 

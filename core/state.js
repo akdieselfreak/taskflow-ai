@@ -7,7 +7,9 @@ export class AppState extends EventTarget {
         super();
         this.tasks = [];
         this.extractedTasks = [];
+        this.notes = [];
         this.currentTaskId = null;
+        this.currentNoteId = null;
         this.currentStep = 1;
         this.selectedService = '';
         this.onboardingData = {
@@ -147,12 +149,67 @@ export class AppState extends EventTarget {
         };
     }
 
+    // Notes Management
+    setNotes(notes) {
+        this.notes = notes;
+        this.dispatchEvent(new CustomEvent('notesChanged', { detail: { notes } }));
+    }
+
+    addNote(note) {
+        this.notes.unshift(note);
+        this.dispatchEvent(new CustomEvent('noteAdded', { detail: { note } }));
+        this.dispatchEvent(new CustomEvent('notesChanged', { detail: { notes: this.notes } }));
+    }
+
+    updateNote(noteId, updates) {
+        const noteIndex = this.notes.findIndex(n => n.id === noteId);
+        if (noteIndex !== -1) {
+            this.notes[noteIndex] = { ...this.notes[noteIndex], ...updates };
+            this.dispatchEvent(new CustomEvent('noteUpdated', { 
+                detail: { noteId, note: this.notes[noteIndex] } 
+            }));
+            this.dispatchEvent(new CustomEvent('notesChanged', { detail: { notes: this.notes } }));
+        }
+    }
+
+    deleteNote(noteId) {
+        const noteIndex = this.notes.findIndex(n => n.id === noteId);
+        if (noteIndex !== -1) {
+            const deletedNote = this.notes.splice(noteIndex, 1)[0];
+            this.dispatchEvent(new CustomEvent('noteDeleted', { detail: { noteId, note: deletedNote } }));
+            this.dispatchEvent(new CustomEvent('notesChanged', { detail: { notes: this.notes } }));
+        }
+    }
+
+    getNote(noteId) {
+        return this.notes.find(n => n.id === noteId);
+    }
+
+    getTodayNotes() {
+        const today = new Date().toISOString().split('T')[0];
+        return this.notes.filter(n => n.createdAt.startsWith(today));
+    }
+
+    getRecentNotes(days = 7) {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - days);
+        return this.notes.filter(n => new Date(n.createdAt) >= cutoff);
+    }
+
+    // UI State Management for Notes
+    setCurrentNoteId(noteId) {
+        this.currentNoteId = noteId;
+        this.dispatchEvent(new CustomEvent('currentNoteChanged', { detail: { noteId } }));
+    }
+
     // Debug Methods
     getDebugInfo() {
         return {
             tasksCount: this.tasks.length,
             extractedTasksCount: this.extractedTasks.length,
+            notesCount: this.notes.length,
             currentTaskId: this.currentTaskId,
+            currentNoteId: this.currentNoteId,
             currentStep: this.currentStep,
             selectedService: this.selectedService,
             userName: this.onboardingData.userName,

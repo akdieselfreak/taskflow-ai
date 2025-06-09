@@ -24,7 +24,8 @@ export const STORAGE_KEYS = {
     MODEL_NAME: 'model_name',
     NAME_VARIATIONS: 'name_variations',
     SYSTEM_PROMPT: 'system_prompt',
-    TASKS: 'tasks'
+    TASKS: 'tasks',
+    NOTES: 'notes'
 };
 
 export const Logger = {

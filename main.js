@@ -13,6 +13,7 @@ import { OpenWebUIService } from './services/openwebuiService.js';
 import { NameVariationsManager } from './features/nameVariations.js';
 import { TaskExtractionManager } from './features/taskExtraction.js';
 import { DataManager } from './features/dataManager.js';
+import { NotesManager } from './features/notesManager.js';
 
 // UI Components
 import { OnboardingManager } from './ui/onboarding.js';
@@ -20,6 +21,8 @@ import { ModalManager } from './ui/modals.js';
 import { TaskRenderer } from './ui/rendering.js';
 import { NotificationManager } from './ui/notifications.js';
 import { DataManagerUI, enhanceModalManagerWithDataManagement } from './ui/dataManagerUI.js';
+import { NotesRenderer } from './ui/notesRenderer.js';
+import { NotesModalManager } from './ui/notesModals.js';
 
 class TaskFlowApp {
     constructor() {
@@ -34,6 +37,10 @@ class TaskFlowApp {
         this.modalManager = null;
         this.taskRenderer = null;
         this.dataManager = null;
+        this.notesManager = null;
+        this.notesRenderer = null;
+        this.notesModalManager = null;
+        this.currentTab = 'tasks';
         
         // Performance & Accessibility features (integrated)
         this.keyboardNav = null;
@@ -106,6 +113,14 @@ class TaskFlowApp {
         // Initialize Data Manager
         this.dataManager = new DataManager(this.appState, this.notifications);
         
+        // Initialize Notes Manager
+        this.notesManager = new NotesManager(
+            this.appState, 
+            this.aiService, 
+            this.taskExtractionManager, 
+            this.notifications
+        );
+        
         // Initialize UI managers
         this.modalManager = new ModalManager(this.appState, {
             taskExtraction: this.taskExtractionManager,
@@ -117,6 +132,8 @@ class TaskFlowApp {
         enhanceModalManagerWithDataManagement(this.modalManager, this.dataManager);
         
         this.taskRenderer = new TaskRenderer(this.appState);
+        this.notesRenderer = new NotesRenderer(this.appState, this.notesManager);
+        this.notesModalManager = new NotesModalManager(this.appState, this.notesManager, this.notifications);
         
         // Setup performance monitoring for task renderer
         this.setupPerformanceMonitoring();
@@ -124,9 +141,11 @@ class TaskFlowApp {
         // Setup global modal functions
         this.modalManager.setupGlobalModalFunctions(this);
         
-        // Load tasks
+        // Load tasks and notes
         const tasks = StorageManager.loadTasks();
+        const notes = StorageManager.loadNotes();
         this.appState.setTasks(tasks);
+        this.appState.setNotes(notes);
         
         // Setup auto-save
         this.setupAutoSave();
@@ -216,6 +235,7 @@ class TaskFlowApp {
         this.autoSaveInterval = setInterval(() => {
             try {
                 StorageManager.saveTasks(this.appState.tasks);
+                StorageManager.saveNotes(this.appState.notes);
             } catch (error) {
                 Logger.error('Auto-save failed', error);
             }
@@ -231,6 +251,13 @@ class TaskFlowApp {
                 this.taskRenderer.renderAll();
             }
             StorageManager.saveTasks(this.appState.tasks);
+        });
+
+        this.appState.addEventListener('notesChanged', () => {
+            if (this.notesRenderer) {
+                this.notesRenderer.refresh();
+            }
+            StorageManager.saveNotes(this.appState.notes);
         });
 
         this.appState.addEventListener('extractedTasksChanged', () => {
@@ -269,6 +296,7 @@ class TaskFlowApp {
         // Window events
         window.addEventListener('beforeunload', () => {
             StorageManager.saveTasks(this.appState.tasks);
+            StorageManager.saveNotes(this.appState.notes);
         });
 
         // Enhanced page visibility handling
@@ -1004,6 +1032,57 @@ class TaskFlowApp {
         }
     }
 
+    // ============================================
+    // NOTES AND TAB MANAGEMENT METHODS
+    // ============================================
+
+    switchTab(tab) {
+        this.currentTab = tab;
+        
+        // Update tab buttons
+        document.querySelectorAll('.nav-tab').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.getAttribute('data-tab') === tab) {
+                btn.classList.add('active');
+            }
+        });
+        
+        // Update tab content
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        
+        const activeContent = document.getElementById(`${tab}Tab`);
+        if (activeContent) {
+            activeContent.classList.add('active');
+        }
+        
+        // Render content for the active tab
+        if (tab === 'notes' && this.notesRenderer) {
+            this.notesRenderer.refresh();
+        } else if (tab === 'tasks' && this.taskRenderer) {
+            this.taskRenderer.renderAll();
+        }
+        
+        Logger.log('Tab switched', { tab });
+    }
+
+    clearSearch() {
+        const searchInput = document.getElementById('notesSearch');
+        if (searchInput) {
+            searchInput.value = '';
+        }
+        
+        const searchResults = document.getElementById('searchResults');
+        if (searchResults) {
+            searchResults.style.display = 'none';
+        }
+        
+        if (this.notesRenderer) {
+            this.notesRenderer.setSearchQuery('');
+        }
+    }
+
     // Utility methods for global access
     getAppState() {
         return this.appState;
@@ -1065,6 +1144,25 @@ function initializeApp() {
     window.postponeTask = () => app.postponeTask();
     window.copyTask = () => app.copyTask();
     window.moveToToday = () => app.moveToToday();
+    
+    // Notes functions
+    window.openNotesModal = (type, noteId) => app.notesModalManager?.openModal(type, noteId);
+    window.closeNotesModal = (type) => app.notesModalManager?.closeModal(type);
+    window.saveNote = (event) => app.notesModalManager?.saveNote(event);
+    window.updateNote = (event) => app.notesModalManager?.updateNote(event);
+    window.generateSummary = () => app.notesModalManager?.generateSummary();
+    window.performExport = () => app.notesModalManager?.performExport();
+    window.copyNoteContent = (noteId) => app.notesModalManager?.copyNoteContent(noteId);
+    window.copySummary = () => app.notesModalManager?.copySummary();
+    window.exportSingleNote = (noteId) => app.notesModalManager?.exportSingleNote(noteId);
+    window.confirmDeleteNote = (noteId) => app.notesModalManager?.confirmDeleteNote(noteId);
+    window.switchTab = (tab) => app.switchTab(tab);
+    window.searchNotes = (query) => app.notesRenderer?.setSearchQuery(query);
+    window.sortNotes = (sortBy) => app.notesRenderer?.setSortBy(sortBy);
+    window.toggleTagFilter = (tag) => app.notesRenderer?.toggleTagFilter(tag);
+    window.clearTagFilters = () => app.notesRenderer?.clearTagFilters();
+    window.clearSearch = () => app.clearSearch();
+    window.openNote = (noteId) => app.notesModalManager?.openModal('view', noteId);
     
     // Performance debugging functions
     window.getPerformanceReport = () => app.getPerformanceReport();

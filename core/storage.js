@@ -145,4 +145,47 @@ export class StorageManager {
             return false;
         }
     }
+
+    // Notes Management
+    static saveNotes(notes) {
+        try {
+            localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(notes));
+            Logger.log('Notes saved to localStorage');
+            return true;
+        } catch (error) {
+            Logger.error('Failed to save notes', error);
+            return false;
+        }
+    }
+
+    static loadNotes() {
+        try {
+            const savedNotes = localStorage.getItem(STORAGE_KEYS.NOTES);
+            if (savedNotes) {
+                const notes = JSON.parse(savedNotes);
+                return this.migrateNotes(notes);
+            }
+            return [];
+        } catch (error) {
+            Logger.error('Failed to load notes', error);
+            return [];
+        }
+    }
+
+    static migrateNotes(notes) {
+        return notes.map(note => {
+            // Ensure all required fields exist
+            if (!note.id) note.id = 'note_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            if (!note.createdAt) note.createdAt = new Date().toISOString();
+            if (!note.modifiedAt) note.modifiedAt = note.createdAt;
+            if (!note.title) note.title = 'Untitled Note';
+            if (!note.content) note.content = '';
+            if (!note.tags) note.tags = [];
+            if (!note.summary) note.summary = '';
+            if (!note.extractedTasks) note.extractedTasks = [];
+            if (note.aiProcessed === undefined) note.aiProcessed = false;
+            
+            return note;
+        });
+    }
 }

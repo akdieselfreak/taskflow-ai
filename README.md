@@ -5,8 +5,10 @@ An intelligent task management system that combines the simplicity of traditiona
 ## 🚀 Features
 
 - **AI-Powered Task Extraction** - Extract multiple tasks from emails, messages, and documents
+- **Smart Notes System** - Create notes with automatic AI summaries and task extraction
 - **Multiple AI Services** - Support for Ollama, Open WebUI, and OpenAI
 - **Smart Name Recognition** - AI recognizes tasks assigned to you by name variations
+- **Daily/Weekly Summaries** - Generate AI-powered summaries of your notes
 - **Data Import/Export** - Comprehensive backup and migration tools
 - **Privacy-First** - All data stored locally in your browser
 - **Keyboard Shortcuts** - Speed up your workflow
@@ -52,19 +54,39 @@ npm start
 - Local or remote deployment
 - OpenAI-compatible API
 
+## 📝 Notes System
+
+### Automatic AI Processing
+- **Instant Summaries** - Each note gets a concise 1-2 sentence AI summary
+- **Task Extraction** - Automatically finds and extracts tasks from your notes
+- **Smart Auto-Add** - High-confidence tasks (>70%) are automatically added to your task list
+- **Name Recognition** - AI recognizes tasks assigned to you by any of your name variations
+
+### Note Management
+- **Tags & Organization** - Tag your notes for easy categorization
+- **Full-Text Search** - Search across all notes by title, content, or tags
+- **Export Options** - Export notes in JSON, Markdown, or plain text formats
+
+### AI Summaries
+- **Daily Summaries** - Generate AI summaries of all notes from a specific day
+- **Weekly Reviews** - Get comprehensive weekly summaries of your activities
+- **Concise & Direct** - Summaries focus on key points without unnecessary explanations
+
 ## 📊 Export/Import Formats
 
-- **JSON** - Complete backup with settings
-- **Markdown** - Human-readable task lists
+- **JSON** - Complete backup with settings and notes
+- **Markdown** - Human-readable task lists and notes
 - **Obsidian** - Knowledge management integration
-- **CSV** - Spreadsheet analysis
+- **CSV** - Spreadsheet analysis for tasks
 
 ## 🎯 Use Cases
 
 - **Email Processing** - Extract action items from email threads
-- **Meeting Notes** - Convert meeting minutes to task lists
+- **Meeting Notes** - Convert meeting minutes to task lists with automatic summaries
 - **Project Management** - Organize complex project requirements
 - **Daily Planning** - Manage personal and professional tasks
+- **Knowledge Management** - Create notes with AI-powered summaries and task extraction
+- **Weekly Reviews** - Generate comprehensive summaries of your week's activities
 
 ## 🔒 Privacy & Security
 

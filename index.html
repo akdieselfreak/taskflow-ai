@@ -243,53 +243,117 @@
         <header>
             <h1>TaskFlow AI</h1>
             <p class="subtitle">Welcome, <span id="userGreeting"></span>!</p>
-            <button class="settings-btn" onclick="openSettings()" title="Settings">⚙️</button>
-            <a href="manual.html" class="help-btn" title="User Manual">?</a>
+            <div class="header-actions">
+                <button class="settings-btn" onclick="openSettings()" title="Settings">⚙️</button>
+                <a href="manual.html" class="help-btn" title="User Manual">?</a>
+            </div>
         </header>
 
-        <div class="task-buttons">
-            <button class="add-task-btn quick-task" onclick="openModal('quick')">
-                <span class="btn-icon">✓</span>
-                Quick Task
+        <!-- Navigation Tabs -->
+        <nav class="main-nav">
+            <button class="nav-tab active" data-tab="tasks" onclick="switchTab('tasks')">
+                <span class="nav-icon">✓</span>
+                <span class="nav-label">Tasks</span>
             </button>
-            <button class="add-task-btn ai-task" onclick="openModal('ai')">
-                <span class="btn-icon">✨</span>
-                AI Extract Task
+            <button class="nav-tab" data-tab="notes" onclick="switchTab('notes')">
+                <span class="nav-icon">📝</span>
+                <span class="nav-label">Notes</span>
             </button>
-        </div>
+        </nav>
 
-        <div class="tasks-layout">
-            <!-- Active Tasks -->
-            <div class="tasks-container">
-                <h2 class="date-header">Today's Tasks</h2>
-                <div id="tasksList"></div>
-                
-                <!-- Task Status Buttons -->
-                <div class="task-status-buttons">
-                    <button class="status-btn completed-btn" onclick="toggleCompletedTasks()">
-                        <span class="status-icon">✓</span>
-                        <span class="status-label">Completed</span>
-                        <span class="status-count" id="completedCount">0</span>
-                    </button>
+        <!-- Tasks Section -->
+        <div class="tab-content active" id="tasksTab">
+            <div class="task-buttons">
+                <button class="add-task-btn quick-task" onclick="openModal('quick')">
+                    <span class="btn-icon">✓</span>
+                    Quick Task
+                </button>
+                <button class="add-task-btn ai-task" onclick="openModal('ai')">
+                    <span class="btn-icon">✨</span>
+                    AI Extract Task
+                </button>
+            </div>
+
+            <div class="tasks-layout">
+                <!-- Active Tasks -->
+                <div class="tasks-container">
+                    <h2 class="date-header">Today's Tasks</h2>
+                    <div id="tasksList"></div>
                     
-                    <button class="status-btn postponed-btn" onclick="togglePostponedTasks()">
-                        <span class="status-icon">⏰</span>
-                        <span class="status-label">Postponed</span>
-                        <span class="status-count" id="postponedCount">0</span>
-                    </button>
-                </div>
-                
-                <!-- Expandable Sections -->
-                <div class="expandable-section" id="completedSection" style="display: none;">
-                    <h3 class="section-header">Completed Tasks</h3>
-                    <div id="completedTasksList" class="section-tasks"></div>
-                </div>
-                
-                <div class="expandable-section" id="postponedSection" style="display: none;">
-                    <h3 class="section-header">Postponed Tasks</h3>
-                    <div id="postponedTasksList" class="section-tasks"></div>
+                    <!-- Task Status Buttons -->
+                    <div class="task-status-buttons">
+                        <button class="status-btn completed-btn" onclick="toggleCompletedTasks()">
+                            <span class="status-icon">✓</span>
+                            <span class="status-label">Completed</span>
+                            <span class="status-count" id="completedCount">0</span>
+                        </button>
+                        
+                        <button class="status-btn postponed-btn" onclick="togglePostponedTasks()">
+                            <span class="status-icon">⏰</span>
+                            <span class="status-label">Postponed</span>
+                            <span class="status-count" id="postponedCount">0</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Expandable Sections -->
+                    <div class="expandable-section" id="completedSection" style="display: none;">
+                        <h3 class="section-header">Completed Tasks</h3>
+                        <div id="completedTasksList" class="section-tasks"></div>
+                    </div>
+                    
+                    <div class="expandable-section" id="postponedSection" style="display: none;">
+                        <h3 class="section-header">Postponed Tasks</h3>
+                        <div id="postponedTasksList" class="section-tasks"></div>
+                    </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Notes Section -->
+        <div class="tab-content" id="notesTab">
+            <div class="notes-header">
+                <div class="notes-actions">
+                    <button class="add-note-btn" onclick="openNotesModal('create')">
+                        <span class="btn-icon">📝</span>
+                        New Note
+                    </button>
+                    <button class="notes-summary-btn" onclick="openNotesModal('summary')">
+                        <span class="btn-icon">🤖</span>
+                        AI Summary
+                    </button>
+                    <button class="notes-export-btn" onclick="openNotesModal('export')">
+                        <span class="btn-icon">📤</span>
+                        Export
+                    </button>
+                </div>
+                
+                <div class="notes-search">
+                    <input type="text" id="notesSearch" placeholder="Search notes..." onkeyup="searchNotes(this.value)" />
+                    <div class="search-filters">
+                        <select id="notesSortBy" onchange="sortNotes(this.value)">
+                            <option value="modified">Sort by Modified</option>
+                            <option value="created">Sort by Created</option>
+                            <option value="title">Sort by Title</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes Stats -->
+            <div class="notes-stats" id="notesStats"></div>
+
+            <!-- Tags Filter -->
+            <div class="notes-filters" id="tagsFilter"></div>
+
+            <!-- Notes Grid -->
+            <div class="notes-container">
+                <div class="notes-grid" id="notesGrid">
+                    <!-- Notes will be rendered here -->
+                </div>
+            </div>
+
+            <!-- Search Results -->
+            <div class="search-results" id="searchResults" style="display: none;"></div>
         </div>
     </div>
 

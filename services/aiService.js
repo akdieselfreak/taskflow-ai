@@ -20,7 +20,7 @@ export class AIService {
                 Logger.log(`AI request attempt ${attempt + 1}/${maxRetries}`);
                 
                 const response = await this.sendRequest(prompt, { ...options, timeout });
-                return this.parseResponse(response);
+                return this.parseResponse(response, options);
                 
             } catch (error) {
                 Logger.warn(`AI request attempt ${attempt + 1} failed`, error);
@@ -39,7 +39,7 @@ export class AIService {
         throw new Error('sendRequest must be implemented by subclass');
     }
 
-    parseResponse(response) {
+    parseResponse(response, options = {}) {
         throw new Error('parseResponse must be implemented by subclass');
     }
 
