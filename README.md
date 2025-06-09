@@ -10,44 +10,29 @@ An intelligent task management system that combines the simplicity of traditiona
 - **Data Import/Export** - Comprehensive backup and migration tools
 - **Privacy-First** - All data stored locally in your browser
 - **Keyboard Shortcuts** - Speed up your workflow
-- **Multiple Deployment Options** - Cloud or self-hosted versions
 
 ## 📦 Quick Start
 
-### Cloud Version (Recommended for most users)
-- Zero setup required
-- Works everywhere
-- OpenAI API integration
-- Deploy to Vercel, Netlify, or GitHub Pages
+```bash
+# Run development server
+npm run dev
 
-### Self-Hosted Version (For local AI and privacy)
-- Full local AI support (Ollama, Open WebUI)
-- Complete privacy control
-- Docker deployment ready
-- Advanced configuration options
+# Access the application at http://localhost:8000
+```
 
 ## 🛠️ Development
 
 ```bash
-# Install dependencies
-npm install
-
-# Run development server (local version)
+# Run development server
 npm run dev
 
-# Run cloud version for testing
-npm run dev:cloud
-
-# Build for production
-npm run build:cloud    # Cloud deployment
-npm run build:local    # Self-hosted deployment
+# Or use start command
+npm start
 ```
 
 ## 📖 Documentation
 
-- [User Manual](manual.html) - Complete feature guide
-- [Deployment Strategy](README-DEPLOYMENT.md) - Technical implementation details
-- [Build Configuration](deployment-strategy.md) - Architecture overview
+- [User Manual](manual.html) - Complete feature guide and instructions
 
 ## 🔧 AI Services Supported
 
@@ -88,33 +73,27 @@ npm run build:local    # Self-hosted deployment
 - API keys stored securely in browser storage
 - Export/import happens locally
 
-## 🚀 Deployment Options
-
-### Cloud Hosting
-```bash
-npm run build:cloud
-# Deploy dist/cloud/ to your preferred hosting service
-```
-
-### Self-Hosting with Docker
-```bash
-npm run build:local
-cd dist/local
-docker-compose up -d
-```
+## 🚀 Deployment
 
 ### Local Development
 ```bash
-npm run dev:local
+npm run dev
 # Access at http://localhost:8000
 ```
+
+### Static Hosting
+Deploy the files to any static web host:
+- GitHub Pages
+- Vercel
+- Netlify
+- Your own web server
 
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test both cloud and local builds
+4. Test your changes locally
 5. Submit a pull request
 
 ## 📝 License
