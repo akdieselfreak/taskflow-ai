@@ -354,9 +354,30 @@ export class DataManager {
 
             const result = await this.processImportedData(importedData);
             
-            this.notifications.showSuccess(
-                `Imported ${result.imported} tasks! ${result.skipped} duplicates skipped.`
-            );
+            // Build success message
+            let successMessage = '';
+            if (result.importedTasks > 0) {
+                successMessage += `Imported ${result.importedTasks} tasks`;
+                if (result.skippedTasks > 0) {
+                    successMessage += ` (${result.skippedTasks} duplicates skipped)`;
+                }
+            }
+            
+            if (result.importedNotes > 0) {
+                if (successMessage) successMessage += ' and ';
+                successMessage += `${result.importedNotes} notes`;
+                if (result.skippedNotes > 0) {
+                    successMessage += ` (${result.skippedNotes} duplicates skipped)`;
+                }
+            }
+            
+            if (!successMessage) {
+                successMessage = 'No new items to import (all were duplicates)';
+            } else {
+                successMessage += '!';
+            }
+            
+            this.notifications.showSuccess(successMessage);
             
             Logger.log('Data imported successfully', result);
             
@@ -388,6 +409,7 @@ export class DataManager {
         
         return {
             tasks: data.tasks,
+            notes: data.notes || [],
             configuration: data.configuration,
             metadata: data.metadata
         };
@@ -503,15 +525,21 @@ export class DataManager {
 
     async processImportedData(importedData) {
         const existingTasks = this.appState.tasks;
-        const existingNames = new Set(existingTasks.map(t => t.name.toLowerCase()));
+        const existingTaskNames = new Set(existingTasks.map(t => t.name.toLowerCase()));
         
-        let imported = 0;
-        let skipped = 0;
+        const existingNotes = this.appState.notes;
+        const existingNoteTitles = new Set(existingNotes.map(n => n.title.toLowerCase()));
         
+        let importedTasks = 0;
+        let skippedTasks = 0;
+        let importedNotes = 0;
+        let skippedNotes = 0;
+        
+        // Process tasks
         for (const task of importedData.tasks) {
             // Skip duplicates based on task name
-            if (existingNames.has(task.name.toLowerCase())) {
-                skipped++;
+            if (existingTaskNames.has(task.name.toLowerCase())) {
+                skippedTasks++;
                 continue;
             }
             
@@ -519,10 +547,38 @@ export class DataManager {
             const cleanTask = this.validateAndCleanTask(task);
             
             this.appState.addTask(cleanTask);
-            imported++;
+            importedTasks++;
         }
         
-        return { imported, skipped, total: importedData.tasks.length };
+        // Process notes if they exist
+        if (importedData.notes && importedData.notes.length > 0) {
+            for (const note of importedData.notes) {
+                // Skip duplicates based on note title
+                if (existingNoteTitles.has(note.title.toLowerCase())) {
+                    skippedNotes++;
+                    continue;
+                }
+                
+                // Validate and clean note data
+                const cleanNote = this.validateAndCleanNote(note);
+                
+                this.appState.addNote(cleanNote);
+                importedNotes++;
+            }
+        }
+        
+        return { 
+            importedTasks, 
+            skippedTasks, 
+            totalTasks: importedData.tasks.length,
+            importedNotes,
+            skippedNotes,
+            totalNotes: importedData.notes ? importedData.notes.length : 0,
+            // Legacy properties for backward compatibility
+            imported: importedTasks,
+            skipped: skippedTasks,
+            total: importedData.tasks.length
+        };
     }
 
     validateAndCleanTask(task) {
@@ -540,6 +596,24 @@ export class DataManager {
             postponedAt: task.postponedAt,
             modifiedAt: task.modifiedAt
         };
+    }
+
+    validateAndCleanNote(note) {
+        return {
+            id: note.id || this.generateNoteId(),
+            title: note.title || 'Imported Note',
+            content: note.content || '',
+            tags: Array.isArray(note.tags) ? note.tags : [],
+            summary: note.summary || '',
+            aiProcessed: Boolean(note.aiProcessed),
+            extractedTasks: Array.isArray(note.extractedTasks) ? note.extractedTasks : [],
+            createdAt: note.createdAt || new Date().toISOString(),
+            modifiedAt: note.modifiedAt || note.createdAt || new Date().toISOString()
+        };
+    }
+
+    generateNoteId() {
+        return 'note-' + Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9);
     }
 
     // ====== UTILITY FUNCTIONS ======
