@@ -128,6 +128,9 @@ class TaskFlowApp {
             notifications: this.notifications
         });
         
+        // Initialize Data Manager UI (after modalManager is created)
+        this.dataManagerUI = new DataManagerUI(this.dataManager, this.modalManager, this.notifications);
+        
         // Enhance modal manager with data management
         enhanceModalManagerWithDataManagement(this.modalManager, this.dataManager);
         
