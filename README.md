@@ -36,7 +36,7 @@ npm start
 
 ## 🔧 AI Services Supported
 
-### OpenAI (Cloud & Self-Hosted)
+### OpenAI (Cloud)
 - GPT-3.5, GPT-4, and newer models
 - Requires API key
 - High accuracy task extraction
@@ -76,45 +76,47 @@ npm start
 ## 🚀 Deployment
 
 ### Local Development
+
 ```bash
 npm run dev
-# Access at http://localhost:8000
 ```
+Access at http://localhost:8000
 
 ### Docker Deployment (Recommended)
 
 #### Quick Start
+
+Clone repository and build locally
 ```bash
-# Clone repository and build locally
 git clone https://github.com/akdieselfreak/taskflow-ai.git
 cd taskflow-ai
 docker-compose up -d
-
-# Access at http://localhost:8080
 ```
+Access at http://localhost:8080
 
 #### If you encounter issues:
+
+Force clean rebuild (fixes permission and config errors)
 ```bash
-# Force clean rebuild (fixes permission and config errors)
 docker-compose down --volumes --remove-orphans
 docker-compose build --no-cache
 docker-compose up -d
 ```
 
 #### Direct Docker Build
+Build and run manually
 ```bash
-# Build and run manually
 git clone https://github.com/akdieselfreak/taskflow-ai.git
 cd taskflow-ai
 docker build -t taskflow-ai .
 docker run -d -p 8080:80 --name taskflow-ai taskflow-ai
-
-# Access at http://localhost:8080
 ```
+Access at http://localhost:8080
 
 #### Development with Docker
-```bash
+
 # For development with live reload
+```bash
 docker-compose -f docker-compose.dev.yml up -d
 ```
 
