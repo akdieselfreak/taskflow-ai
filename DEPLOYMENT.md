@@ -4,23 +4,15 @@
 
 ### Option 1: Docker Compose (Recommended)
 ```bash
-# Download and start TaskFlow AI
-curl -O https://raw.githubusercontent.com/akdieselfreak/taskflow-ai/main/docker-compose.yml
+# Clone repository and build
+git clone <repository-url>
+cd taskflow-ai
 docker-compose up -d
 
 # Access at http://localhost:8080
 ```
 
-### Option 2: With Local AI (Ollama)
-```bash
-# Download docker-compose.yml first, then:
-docker-compose --profile with-ollama up -d
-
-# TaskFlow AI: http://localhost:8080
-# Ollama: http://localhost:11434
-```
-
-### Option 3: Direct Docker Run
+### Option 2: Direct Docker Run
 ```bash
 # Single container deployment
 docker run -d -p 8080:80 --name taskflow-ai akdieselfreak/taskflow-ai:latest

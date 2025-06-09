@@ -6,33 +6,28 @@ TaskFlow AI is containerized using Docker with nginx as the web server. This pro
 
 ## Quick Start
 
-### Option 1: One-Line Deployment (Recommended)
+### Option 1: Docker Compose (Recommended)
 ```bash
-# Download and start - no build required
-curl -O https://raw.githubusercontent.com/akdieselfreak/taskflow-ai/main/docker-compose.yml
+# Clone repository and build locally
+git clone <repository-url>
+cd taskflow-ai
 docker-compose up -d
 
 # Access at http://localhost:8080
 ```
 
-### Option 2: With Ollama for Local AI
+### Option 2: Direct Docker Build
 ```bash
-# Download docker-compose.yml first, then:
-docker-compose --profile with-ollama up -d
-
-# TaskFlow AI: http://localhost:8080
-# Ollama API: http://localhost:11434
-```
-
-### Option 3: Direct Docker Run
-```bash
-# Run pre-built image directly
-docker run -d -p 8080:80 --name taskflow-ai akdieselfreak/taskflow-ai:latest
+# Build and run locally
+git clone <repository-url>
+cd taskflow-ai
+docker build -t taskflow-ai .
+docker run -d -p 8080:80 --name taskflow-ai taskflow-ai
 
 # Access at http://localhost:8080
 ```
 
-### Option 4: Development Build
+### Option 3: Development Build
 ```bash
 # Clone repository and build locally
 git clone https://github.com/akdieselfreak/taskflow-ai.git
@@ -86,11 +81,6 @@ docker run -p 8080:80 -v $(pwd):/usr/share/nginx/html taskflow-ai
 - **Restart Policy**: unless-stopped
 - **Network**: taskflow-network
 
-### Ollama Service (Optional)
-- **Port**: 11434:11434
-- **Volume**: Persistent storage for models
-- **Profile**: `with-ollama` (opt-in)
-- **Health Check**: API endpoint check
 
 ## Production Deployment
 
@@ -171,7 +161,6 @@ docker-compose logs -f
 
 # View specific service logs
 docker-compose logs -f taskflow-ai
-docker-compose logs -f ollama
 ```
 
 ### Metrics
@@ -214,15 +203,6 @@ docker logs <container-id>
 docker run -it --entrypoint /bin/sh taskflow-ai
 ```
 
-#### Ollama Connection Issues
-```bash
-# Check if Ollama is accessible
-curl http://localhost:11434/api/tags
-
-# Verify network connectivity
-docker network ls
-docker network inspect taskflow_taskflow-network
-```
 
 ## Security Considerations
 
@@ -284,8 +264,8 @@ COPY --from=builder /app /usr/share/nginx/html
 
 ### Data Backup
 ```bash
-# Backup Ollama models
-docker run --rm -v taskflow_ollama_data:/data -v $(pwd):/backup alpine tar czf /backup/ollama-backup.tar.gz /data
+# Backup application data (if using volumes)
+docker run --rm -v taskflow_data:/data -v $(pwd):/backup alpine tar czf /backup/taskflow-backup.tar.gz /data
 ```
 
 ### Container Images
