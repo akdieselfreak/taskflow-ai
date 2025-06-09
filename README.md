@@ -81,6 +81,43 @@ npm run dev
 # Access at http://localhost:8000
 ```
 
+### Docker Deployment (Recommended)
+
+#### Quick Start with Docker Compose
+```bash
+# Start TaskFlow AI only
+npm run docker:up
+
+# Start with Ollama for local AI
+npm run docker:with-ollama
+
+# Access at http://localhost:8080
+```
+
+#### Manual Docker Build
+```bash
+# Build the image
+npm run docker:build
+
+# Run the container
+npm run docker:run
+
+# Access at http://localhost:8080
+```
+
+#### Docker Commands
+```bash
+# View logs
+npm run docker:logs
+
+# Stop containers
+npm run docker:down
+
+# Build and run manually
+docker build -t taskflow-ai .
+docker run -p 8080:80 taskflow-ai
+```
+
 ### Static Hosting
 Deploy the files to any static web host:
 - GitHub Pages

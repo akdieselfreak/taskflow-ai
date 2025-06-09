@@ -5,14 +5,21 @@
   "main": "index.html",
   "scripts": {
     "dev": "python3 -m http.server 8000",
-    "start": "python3 -m http.server 8000"
+    "start": "python3 -m http.server 8000",
+    "docker:build": "docker build -t taskflow-ai .",
+    "docker:run": "docker run -p 8080:80 taskflow-ai",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:with-ollama": "docker-compose --profile with-ollama up -d"
   },
   "keywords": [
     "task-management",
     "ai",
     "productivity",
     "ollama",
-    "openai"
+    "openai",
+    "docker"
   ],
   "author": "akdieselfreak",
   "license": "MIT",
