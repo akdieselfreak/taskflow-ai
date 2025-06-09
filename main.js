@@ -874,8 +874,15 @@ class TaskFlowApp {
     resetOnboarding() {
         if (confirm('This will reset your AI configuration and delete all tasks and notes. Are you sure?')) {
             try {
-                // Clear all data
+                // Clear app state first
+                this.appState.setTasks([]);
+                this.appState.setNotes([]);
+                
+                // Clear all localStorage data
                 StorageManager.clearAll();
+                
+                // Also clear any potential remaining localStorage items manually
+                localStorage.clear();
                 
                 Logger.log('Complete application reset completed');
                 location.reload();
