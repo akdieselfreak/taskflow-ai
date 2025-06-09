@@ -872,16 +872,31 @@ class TaskFlowApp {
     }
 
     resetOnboarding() {
-        if (confirm('This will reset your AI configuration and delete all tasks. Are you sure?')) {
+        if (confirm('This will reset your AI configuration and delete all tasks and notes. Are you sure?')) {
             try {
                 // Clear all data
                 StorageManager.clearAll();
                 
-                Logger.log('Configuration reset completed');
+                Logger.log('Complete application reset completed');
                 location.reload();
             } catch (error) {
-                Logger.error('Failed to reset configuration', error);
-                this.notifications.showError('Failed to reset configuration. Please try again.');
+                Logger.error('Failed to reset application', error);
+                this.notifications.showError('Failed to reset application. Please try again.');
+            }
+        }
+    }
+
+    resetAIConfigOnly() {
+        if (confirm('This will reset your AI configuration but keep your tasks and notes. Are you sure?')) {
+            try {
+                // Clear only AI-related configuration
+                StorageManager.clearAIConfig();
+                
+                Logger.log('AI configuration reset completed');
+                location.reload();
+            } catch (error) {
+                Logger.error('Failed to reset AI configuration', error);
+                this.notifications.showError('Failed to reset AI configuration. Please try again.');
             }
         }
     }
@@ -1139,6 +1154,7 @@ function initializeApp() {
     window.togglePostponedTasks = () => app.togglePostponedTasks();
     window.openSettings = () => app.openSettings();
     window.resetOnboarding = () => app.resetOnboarding();
+    window.resetAIConfigOnly = () => app.resetAIConfigOnly();
     
     // Task management functions
     window.updateTask = (event) => app.updateTask(event);

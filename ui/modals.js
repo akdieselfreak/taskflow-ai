@@ -306,10 +306,10 @@ export class ModalManager {
                 </div>
                 
                 <div class="setting-item">
-                    <button class="btn btn-danger" onclick="resetOnboarding()">
+                    <button class="btn btn-danger" onclick="resetAIConfigOnly()">
                         🔄 Reconfigure AI Service
                     </button>
-                    <p class="setting-description">This will reset your AI configuration and restart the setup process</p>
+                    <p class="setting-description">This will reset your AI configuration but keep your tasks and notes</p>
                 </div>
             </div>
         `;

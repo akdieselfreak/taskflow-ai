@@ -135,6 +135,32 @@ export class StorageManager {
         }
     }
 
+    static clearAIConfig() {
+        try {
+            // Clear only AI-related configuration, keep tasks and notes
+            const aiConfigKeys = [
+                STORAGE_KEYS.ONBOARDING_COMPLETED,
+                STORAGE_KEYS.USER_NAME,
+                STORAGE_KEYS.SERVICE_TYPE,
+                STORAGE_KEYS.API_ENDPOINT,
+                STORAGE_KEYS.API_KEY,
+                STORAGE_KEYS.MODEL_NAME,
+                STORAGE_KEYS.NAME_VARIATIONS,
+                STORAGE_KEYS.SYSTEM_PROMPT
+            ];
+            
+            aiConfigKeys.forEach(key => {
+                localStorage.removeItem(key);
+            });
+            
+            Logger.log('AI configuration cleared, tasks and notes preserved');
+            return true;
+        } catch (error) {
+            Logger.error('Failed to clear AI configuration', error);
+            return false;
+        }
+    }
+
     static updateUserName(newName) {
         try {
             localStorage.setItem(STORAGE_KEYS.USER_NAME, newName);
