@@ -97,27 +97,52 @@ sudo certbot --nginx -d your-domain.com
 
 ## 🆘 Troubleshooting
 
+### Nginx Permission Errors
+If you see `Permission denied` errors for `/run/nginx.pid`:
+```bash
+# Stop and remove existing containers
+docker-compose down --volumes --remove-orphans
+
+# Force rebuild without cache
+docker-compose build --no-cache
+
+# Start fresh
+docker-compose up -d
+```
+
+### Container Configuration Errors
+If you see `ContainerConfig` or similar errors:
+```bash
+# Clean up corrupted containers
+docker-compose down --volumes --remove-orphans
+docker system prune -f
+
+# Rebuild and restart
+docker-compose build --no-cache
+docker-compose up -d
+```
+
 ### Port Already in Use
 ```bash
 # Check what's using port 8080
 sudo lsof -i :8080
 
-# Use different port
-docker run -d -p 8081:80 --name taskflow-ai akdieselfreak/taskflow-ai:latest
+# Use different port by editing docker-compose.yml
+# Change "8080:80" to "8081:80"
 ```
 
 ### Container Won't Start
 ```bash
 # Check logs
-docker logs taskflow-ai
+docker-compose logs taskflow-ai
 
 # Check if Docker is running
 sudo systemctl status docker
 ```
 
 ### Can't Access Application
-1. Check if container is running: `docker ps`
-2. Check port mapping: `docker port taskflow-ai`
+1. Check if container is running: `docker-compose ps`
+2. Check port mapping: `docker-compose port taskflow-ai 80`
 3. Check firewall settings
 4. Try accessing: `curl http://localhost:8080`
 

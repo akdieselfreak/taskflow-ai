@@ -93,6 +93,14 @@ docker-compose up -d
 # Access at http://localhost:8080
 ```
 
+#### If you encounter issues:
+```bash
+# Force clean rebuild (fixes permission and config errors)
+docker-compose down --volumes --remove-orphans
+docker-compose build --no-cache
+docker-compose up -d
+```
+
 #### Direct Docker Build
 ```bash
 # Build and run manually
