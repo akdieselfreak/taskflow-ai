@@ -83,22 +83,25 @@ npm run dev
 
 ### Docker Deployment (Recommended)
 
-#### Quick Start - No Build Required
+#### Quick Start
 ```bash
-# Download and start TaskFlow AI
+# Clone repository and build locally
+git clone https://github.com/akdieselfreak/taskflow-ai.git
+cd taskflow-ai
 docker-compose up -d
-
-# Or with Ollama for local AI
-docker-compose --profile with-ollama up -d
 
 # Access at http://localhost:8080
 ```
 
-#### One-Line Deployment
+#### Direct Docker Build
 ```bash
-# Just download docker-compose.yml and run:
-curl -O https://raw.githubusercontent.com/akdieselfreak/taskflow-ai/main/docker-compose.yml
-docker-compose up -d
+# Build and run manually
+git clone https://github.com/akdieselfreak/taskflow-ai.git
+cd taskflow-ai
+docker build -t taskflow-ai .
+docker run -d -p 8080:80 --name taskflow-ai taskflow-ai
+
+# Access at http://localhost:8080
 ```
 
 #### Development with Docker
@@ -113,6 +116,13 @@ Deploy the files to any static web host:
 - Vercel
 - Netlify
 - Your own web server
+
+### Production Deployment
+For production environments, see [DEPLOYMENT.md](DEPLOYMENT.md) and [DOCKER.md](DOCKER.md) for detailed guides including:
+- Reverse proxy setup
+- SSL configuration
+- Health monitoring
+- Security considerations
 
 ## 🤝 Contributing
 
