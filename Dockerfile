@@ -21,14 +21,16 @@ COPY ui/ ./ui/
 COPY nginx.conf /etc/nginx/nginx.conf
 
 # Create a non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S taskflow -u 1001
+RUN addgroup -g 1001 -S taskflow && \
+    adduser -S taskflow -u 1001 -G taskflow
 
-# Set proper permissions
-RUN chown -R taskflow:nodejs /usr/share/nginx/html && \
-    chown -R taskflow:nodejs /var/cache/nginx && \
-    chown -R taskflow:nodejs /var/log/nginx && \
-    chown -R taskflow:nodejs /etc/nginx/conf.d
+# Set proper permissions for nginx to run as non-root
+RUN chown -R taskflow:taskflow /usr/share/nginx/html && \
+    chown -R taskflow:taskflow /var/cache/nginx && \
+    chown -R taskflow:taskflow /var/log/nginx && \
+    chown -R taskflow:taskflow /etc/nginx/conf.d && \
+    touch /tmp/nginx.pid && \
+    chown taskflow:taskflow /tmp/nginx.pid
 
 # Switch to non-root user
 USER taskflow
