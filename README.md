@@ -110,7 +110,7 @@ For complete Docker build instructions, see [BUILD.md](BUILD.md)
 
 #### Quick Start
 ```bash
-git clone <repository-url>
+git clone https://github.com/akdieselfreak/taskflow-ai.git
 cd taskflow-ai
 docker-compose up -d
 ```
