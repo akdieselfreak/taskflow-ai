@@ -4,35 +4,65 @@
 
 TaskFlow AI is containerized using Docker with nginx as the web server. This provides a production-ready deployment that's easy to scale and manage.
 
+## Prerequisites
+
+- Docker Engine 20.10+ 
+- Docker Compose 2.0+
+- Git (for cloning the repository)
+
 ## Quick Start
 
-### Option 1: Docker Compose (Recommended)
+### Option 1: Production Build with Docker Compose (Recommended)
 ```bash
-# Clone repository and build locally
+# Clone the repository
 git clone <repository-url>
 cd taskflow-ai
+
+# Build and start the application
 docker-compose up -d
 
-# Access at http://localhost:8080
+# Access the application at http://localhost:8080
 ```
 
-### Option 2: Direct Docker Build
+### Option 2: Development Build with Hot Reload
 ```bash
-# Build and run locally
+# Clone the repository
 git clone <repository-url>
 cd taskflow-ai
-docker build -t taskflow-ai .
-docker run -d -p 8080:80 --name taskflow-ai taskflow-ai
 
-# Access at http://localhost:8080
+# Start development environment with file watching
+docker-compose -f docker-compose.dev.yml up -d
+
+# Access the application at http://localhost:8080
+# Files are mounted for live editing
 ```
 
-### Option 3: Development Build
+### Option 3: Production Build with Ollama AI Service
 ```bash
-# Clone repository and build locally
-git clone https://github.com/akdieselfreak/taskflow-ai.git
+# Clone the repository
+git clone <repository-url>
 cd taskflow-ai
-docker-compose -f docker-compose.dev.yml up -d
+
+# Start with Ollama service for local AI
+docker-compose --profile with-ollama up -d
+
+# Access the application at http://localhost:8080
+# Ollama API available at http://localhost:11434
+```
+
+### Option 4: Direct Docker Build
+```bash
+# Clone the repository
+git clone <repository-url>
+cd taskflow-ai
+
+# Build the image
+docker build -t taskflow-ai .
+
+# Run the container
+docker run -d -p 8080:8080 --name taskflow-ai taskflow-ai
+
+# Access the application at http://localhost:8080
 ```
 
 ## Container Architecture
@@ -56,13 +86,13 @@ docker-compose -f docker-compose.dev.yml up -d
 ### Environment Variables
 ```bash
 # Set environment (optional)
-docker run -e NODE_ENV=production -p 8080:80 taskflow-ai
+docker run -e NODE_ENV=production -p 8080:8080 taskflow-ai
 ```
 
 ### Port Mapping
 ```bash
 # Use different port
-docker run -p 3000:80 taskflow-ai
+docker run -p 3000:8080 taskflow-ai
 
 # Access at http://localhost:3000
 ```
@@ -70,16 +100,31 @@ docker run -p 3000:80 taskflow-ai
 ### Volume Mounting (for development)
 ```bash
 # Mount source code for live editing
-docker run -p 8080:80 -v $(pwd):/usr/share/nginx/html taskflow-ai
+docker run -p 8080:8080 -v $(pwd):/usr/share/nginx/html taskflow-ai
 ```
 
 ## Docker Compose Services
 
 ### TaskFlow AI Service
-- **Port**: 8080:80
+- **Port**: 8080:8080
 - **Health Check**: HTTP endpoint at `/health`
 - **Restart Policy**: unless-stopped
-- **Network**: taskflow-network
+- **Network**: taskflow-network (bridge mode)
+
+### Ollama AI Service (Optional)
+- **Port**: 11434:11434
+- **Volume**: ollama_data for model storage
+- **Health Check**: API endpoint at `/api/tags`
+- **Profile**: with-ollama (use `--profile with-ollama` to enable)
+
+## Network Configuration
+
+The Docker setup now uses proper bridge networking instead of host mode for better security and isolation:
+
+- **Production**: Uses `taskflow-network` bridge network
+- **Development**: Same network with volume mounts for live editing
+- **Security**: Containers are isolated from host network
+- **Scalability**: Easy to add more services to the same network
 
 
 ## Production Deployment
@@ -117,11 +162,11 @@ spec:
       - name: taskflow-ai
         image: taskflow-ai:latest
         ports:
-        - containerPort: 80
+        - containerPort: 8080
         livenessProbe:
           httpGet:
             path: /health
-            port: 80
+            port: 8080
           initialDelaySeconds: 30
           periodSeconds: 10
 ```
@@ -182,7 +227,7 @@ docker system df
 lsof -i :8080
 
 # Use different port
-docker run -p 8081:80 taskflow-ai
+docker run -p 8081:8080 taskflow-ai
 ```
 
 #### Permission Denied

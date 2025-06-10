@@ -106,41 +106,31 @@ Access at http://localhost:8000
 
 ### Docker Deployment (Recommended)
 
+For complete Docker build instructions, see [BUILD.md](BUILD.md)
+
 #### Quick Start
-
-Clone repository and build locally
 ```bash
-git clone https://github.com/akdieselfreak/taskflow-ai.git
+git clone <repository-url>
 cd taskflow-ai
 docker-compose up -d
 ```
 Access at http://localhost:8080
 
-#### If you encounter issues:
-
-Force clean rebuild (fixes permission and config errors)
-```bash
-docker-compose down --volumes --remove-orphans
-docker-compose build --no-cache
-docker-compose up -d
-```
-
-#### Direct Docker Build
-Build and run manually
-```bash
-git clone https://github.com/akdieselfreak/taskflow-ai.git
-cd taskflow-ai
-docker build -t taskflow-ai .
-docker run -d -p 8080:80 --name taskflow-ai taskflow-ai
-```
-Access at http://localhost:8080
-
-#### Development with Docker
-
-# For development with live reload
+#### Development Build
 ```bash
 docker-compose -f docker-compose.dev.yml up -d
 ```
+
+#### With Local AI (Ollama)
+```bash
+docker-compose --profile with-ollama up -d
+```
+
+**What's Fixed:**
+- ✅ Removed problematic `host` network mode
+- ✅ Now uses secure bridge networking
+- ✅ Consistent port mapping (8080:8080)
+- ✅ Proper container isolation
 
 ### Static Hosting
 Deploy the files to any static web host:

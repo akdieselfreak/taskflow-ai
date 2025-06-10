@@ -4,7 +4,8 @@ services:
   taskflow-ai:
     build: .
     container_name: taskflow-ai
-    network_mode: host
+    ports:
+      - "8080:8080"
     environment:
       - NODE_ENV=production
     restart: unless-stopped
@@ -14,3 +15,35 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - taskflow-network
+
+  # Optional: Include Ollama service for local AI
+  ollama:
+    image: ollama/ollama:latest
+    container_name: taskflow-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - taskflow-network
+    profiles:
+      - with-ollama
+
+volumes:
+  ollama_data:
+    driver: local
+
+networks:
+  taskflow-network:
+    driver: bridge
