@@ -45,10 +45,7 @@ export class NotesRenderer {
             : '';
 
         const tasksIndicator = note.extractedTasks.length > 0
-            ? `<div class="note-tasks-indicator" title="${note.extractedTasks.length} tasks found">
-                 <span class="task-icon">✓</span>
-                 <span class="task-count">${note.extractedTasks.length}</span>
-               </div>`
+            ? this.renderTasksIndicator(note)
             : '';
 
         const aiProcessedIndicator = note.aiProcessed
@@ -388,5 +385,77 @@ export class NotesRenderer {
                 }, 2000);
             }
         }, 100);
+    }
+
+    renderTasksIndicator(note) {
+        if (!note.extractedTasks || note.extractedTasks.length === 0) {
+            return '';
+        }
+
+        // Check the actual status of tasks from this note
+        const taskStatuses = this.getTaskStatuses(note);
+        const totalTasks = note.extractedTasks.length;
+        const autoAddedCount = taskStatuses.autoAdded;
+        const pendingCount = taskStatuses.pending;
+
+        let icon, title, className;
+
+        if (autoAddedCount > 0 && pendingCount === 0) {
+            // All tasks were auto-added
+            icon = '✅';
+            title = `${totalTasks} task${totalTasks > 1 ? 's' : ''} automatically added`;
+            className = 'note-tasks-indicator auto-added';
+        } else if (autoAddedCount === 0 && pendingCount > 0) {
+            // All tasks are pending
+            icon = '⏳';
+            title = `${totalTasks} task${totalTasks > 1 ? 's' : ''} pending approval`;
+            className = 'note-tasks-indicator pending';
+        } else if (autoAddedCount > 0 && pendingCount > 0) {
+            // Mixed status
+            icon = '🔄';
+            title = `${autoAddedCount} added, ${pendingCount} pending approval`;
+            className = 'note-tasks-indicator mixed';
+        } else {
+            // No tasks found in either list (shouldn't happen, but fallback)
+            icon = '❓';
+            title = `${totalTasks} task${totalTasks > 1 ? 's' : ''} found`;
+            className = 'note-tasks-indicator unknown';
+        }
+
+        return `
+            <div class="${className}" title="${title}">
+                <span class="task-icon">${icon}</span>
+                <span class="task-count">${totalTasks}</span>
+            </div>
+        `;
+    }
+
+    getTaskStatuses(note) {
+        let autoAdded = 0;
+        let pending = 0;
+
+        // Check each extracted task to see its current status
+        note.extractedTasks.forEach(extractedTask => {
+            // Check if this task was added to the main task list
+            const isInTaskList = this.appState.tasks.some(task => 
+                task.sourceNoteId === note.id && 
+                (task.name === extractedTask.title || task.description === extractedTask.description)
+            );
+
+            // Check if this task is in pending approval
+            const isInPending = this.appState.pendingTasks.some(pendingTask => 
+                pendingTask.sourceNoteId === note.id && 
+                (pendingTask.title === extractedTask.title || pendingTask.description === extractedTask.description)
+            );
+
+            if (isInTaskList) {
+                autoAdded++;
+            } else if (isInPending) {
+                pending++;
+            }
+            // Note: Some tasks might not be in either list if they were rejected or removed
+        });
+
+        return { autoAdded, pending };
     }
 }

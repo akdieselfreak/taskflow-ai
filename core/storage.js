@@ -34,7 +34,10 @@ export class StorageManager {
                 apiKey: localStorage.getItem(STORAGE_KEYS.API_KEY) || '',
                 model: localStorage.getItem(STORAGE_KEYS.MODEL_NAME) || '',
                 nameVariations: this.loadNameVariations(),
-                systemPrompt: localStorage.getItem(STORAGE_KEYS.SYSTEM_PROMPT)
+                systemPrompt: localStorage.getItem(STORAGE_KEYS.SYSTEM_PROMPT),
+                notesTitlePrompt: localStorage.getItem(STORAGE_KEYS.NOTES_TITLE_PROMPT),
+                notesSummaryPrompt: localStorage.getItem(STORAGE_KEYS.NOTES_SUMMARY_PROMPT),
+                notesTaskExtractionPrompt: localStorage.getItem(STORAGE_KEYS.NOTES_TASK_EXTRACTION_PROMPT)
             };
 
             Logger.log('Configuration loaded successfully', { 
@@ -122,6 +125,39 @@ export class StorageManager {
         }
     }
 
+    static saveNotesTitlePrompt(prompt) {
+        try {
+            localStorage.setItem(STORAGE_KEYS.NOTES_TITLE_PROMPT, prompt);
+            Logger.log('Notes title prompt saved');
+            return true;
+        } catch (error) {
+            Logger.error('Failed to save notes title prompt', error);
+            return false;
+        }
+    }
+
+    static saveNotesSummaryPrompt(prompt) {
+        try {
+            localStorage.setItem(STORAGE_KEYS.NOTES_SUMMARY_PROMPT, prompt);
+            Logger.log('Notes summary prompt saved');
+            return true;
+        } catch (error) {
+            Logger.error('Failed to save notes summary prompt', error);
+            return false;
+        }
+    }
+
+    static saveNotesTaskExtractionPrompt(prompt) {
+        try {
+            localStorage.setItem(STORAGE_KEYS.NOTES_TASK_EXTRACTION_PROMPT, prompt);
+            Logger.log('Notes task extraction prompt saved');
+            return true;
+        } catch (error) {
+            Logger.error('Failed to save notes task extraction prompt', error);
+            return false;
+        }
+    }
+
     static clearAll() {
         try {
             Object.values(STORAGE_KEYS).forEach(key => {
@@ -196,6 +232,45 @@ export class StorageManager {
             Logger.error('Failed to load notes', error);
             return [];
         }
+    }
+
+    // Pending Tasks Management
+    static savePendingTasks(pendingTasks) {
+        try {
+            localStorage.setItem(STORAGE_KEYS.PENDING_TASKS, JSON.stringify(pendingTasks));
+            Logger.log('Pending tasks saved to localStorage');
+            return true;
+        } catch (error) {
+            Logger.error('Failed to save pending tasks', error);
+            return false;
+        }
+    }
+
+    static loadPendingTasks() {
+        try {
+            const savedPendingTasks = localStorage.getItem(STORAGE_KEYS.PENDING_TASKS);
+            if (savedPendingTasks) {
+                const pendingTasks = JSON.parse(savedPendingTasks);
+                return this.migratePendingTasks(pendingTasks);
+            }
+            return [];
+        } catch (error) {
+            Logger.error('Failed to load pending tasks', error);
+            return [];
+        }
+    }
+
+    static migratePendingTasks(pendingTasks) {
+        return pendingTasks.map(task => {
+            // Ensure all required fields exist
+            if (!task.id) task.id = 'pending_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            if (!task.createdAt) task.createdAt = new Date().toISOString();
+            if (!task.confidence) task.confidence = 0.5;
+            if (!task.sourceNoteId) task.sourceNoteId = null;
+            if (!task.status) task.status = 'pending';
+            
+            return task;
+        });
     }
 
     static migrateNotes(notes) {

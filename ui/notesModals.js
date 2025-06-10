@@ -432,10 +432,7 @@ export class NotesModalManager {
                         </div>
                         <p class="task-description">${task.description}</p>
                         ${task.context ? `<small class="task-context">Context: ${task.context}</small>` : ''}
-                        ${task.autoAdd ? 
-                            '<div class="task-status auto-added">✓ Automatically added to tasks</div>' : 
-                            '<div class="task-status suggestion">💡 Task suggestion</div>'
-                        }
+                        ${this.getTaskStatusDisplay(task)}
                     </div>
                 `).join('')}
             </div>
@@ -637,6 +634,39 @@ export class NotesModalManager {
             this.notesManager.deleteNote(noteId);
             this.closeModal('edit');
             this.notifications.showSuccess('Note deleted successfully');
+        }
+    }
+
+    getTaskStatusDisplay(task) {
+        // Get the current note to check task status
+        const note = this.appState.getNote(this.currentNoteId);
+        if (!note) {
+            return '<div class="task-status unknown">❓ Status unknown</div>';
+        }
+
+        // Check if this task was added to the main task list
+        const isInTaskList = this.appState.tasks.some(mainTask => 
+            mainTask.sourceNoteId === note.id && 
+            (mainTask.name === task.title || mainTask.description === task.description)
+        );
+
+        // Check if this task is in pending approval
+        const isInPending = this.appState.pendingTasks.some(pendingTask => 
+            pendingTask.sourceNoteId === note.id && 
+            (pendingTask.title === task.title || pendingTask.description === task.description)
+        );
+
+        if (isInTaskList) {
+            return '<div class="task-status auto-added">✅ Automatically added to tasks</div>';
+        } else if (isInPending) {
+            return '<div class="task-status pending">⏳ Pending approval</div>';
+        } else {
+            // Task was either rejected or not processed yet
+            if (task.confidence >= 0.95) {
+                return '<div class="task-status rejected">❌ Rejected or removed</div>';
+            } else {
+                return '<div class="task-status low-confidence">💡 Low confidence - not auto-added</div>';
+            }
         }
     }
 }

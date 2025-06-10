@@ -282,6 +282,12 @@
                     
                     <!-- Task Status Buttons -->
                     <div class="task-status-buttons">
+                        <button class="status-btn pending-btn" onclick="togglePendingTasks()">
+                            <span class="status-icon">⏳</span>
+                            <span class="status-label">Pending Approval</span>
+                            <span class="status-count" id="pendingCount">0</span>
+                        </button>
+                        
                         <button class="status-btn completed-btn" onclick="toggleCompletedTasks()">
                             <span class="status-icon">✓</span>
                             <span class="status-label">Completed</span>
@@ -296,6 +302,12 @@
                     </div>
                     
                     <!-- Expandable Sections -->
+                    <div class="expandable-section" id="pendingSection" style="display: none;">
+                        <h3 class="section-header">Tasks Pending Approval</h3>
+                        <p class="section-description">AI-identified tasks that need your review before being added to your task list</p>
+                        <div id="pendingTasksList" class="section-tasks pending-tasks-list"></div>
+                    </div>
+                    
                     <div class="expandable-section" id="completedSection" style="display: none;">
                         <h3 class="section-header">Completed Tasks</h3>
                         <div id="completedTasksList" class="section-tasks"></div>

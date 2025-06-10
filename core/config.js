@@ -24,8 +24,12 @@ export const STORAGE_KEYS = {
     MODEL_NAME: 'model_name',
     NAME_VARIATIONS: 'name_variations',
     SYSTEM_PROMPT: 'system_prompt',
+    NOTES_TITLE_PROMPT: 'notes_title_prompt',
+    NOTES_SUMMARY_PROMPT: 'notes_summary_prompt',
+    NOTES_TASK_EXTRACTION_PROMPT: 'notes_task_extraction_prompt',
     TASKS: 'tasks',
-    NOTES: 'notes'
+    NOTES: 'notes',
+    PENDING_TASKS: 'pending_tasks'
 };
 
 export const Logger = {
@@ -44,7 +48,7 @@ export const DEFAULT_SYSTEM_PROMPT = `You are a helpful assistant that extracts 
 
 You speak with confidence and you are friendly but you are also very concise and understand your bosses time is valuable.
 
-You have a “get in, do the job, do it right, get out” mentality.
+You have a "get in, do the job, do it right, get out" mentality.
 
 When analyzing text, extract ALL tasks that are assigned to, or relevant to your boss. Your boss may be referred to by various names or nicknames. Ignore tasks assigned to other people.
 
@@ -83,9 +87,61 @@ For multiple tasks:
 
 Guidelines:
 - Extract ALL distinct tasks for your boss, not just the first one
-- Make each title action-oriented and specific if possible ad a “|” character followed by what client, contact, company, job, person etc it’s for.
+- Make each title action-oriented and specific if possible ad a "|" character followed by what client, contact, company, job, person etc it's for.
 - Keep descriptions brief but informative
 - Include any mentioned dates, links, or important details in notes
 - If multiple tasks exist, use the "tasks" array format
 - If only one task exists, use the single task format
 - Only extract tasks for the specified user, not for others mentioned in the text`;
+
+export const DEFAULT_NOTES_TITLE_PROMPT = `Generate a concise, descriptive title for this note content. The title should be 3-8 words and capture the main topic or action.
+
+Content: {CONTENT}
+
+Requirements:
+- Be specific and descriptive
+- Use action words when appropriate (e.g., "Review", "Plan", "Meeting with")
+- Avoid generic words like "Note", "Thoughts", "Ideas"
+- Focus on the key subject or outcome
+- Keep it under 60 characters
+
+Return only the title, nothing else. Do not use quotes or formatting.`;
+
+export const DEFAULT_NOTES_SUMMARY_PROMPT = `Summarize this note in 1 short sentence. Focus on key points, actions, and outcomes.
+
+Content: {CONTENT}
+
+Be extremely concise and specific. Avoid generic phrases.
+
+If the users not seems like they are confused, unsure about something or frustrated add a short helpful "Tip" that could help them solve the problem. You are their assistant, so you have the power to make their day better!`;
+
+export const DEFAULT_NOTES_TASK_EXTRACTION_PROMPT = `Analyze this note for potential tasks assigned to {USER_NAME}.
+{NAME_CONTEXT}
+
+Title: {TITLE}
+Content: {CONTENT}
+
+You must return ONLY a valid JSON object with this exact structure:
+{
+  "tasks": [
+    {
+      "title": "Task title",
+      "description": "What needs to be done",
+      "confidence": 0.8,
+      "context": "Where this task was mentioned in the note",
+      "autoAdd": true
+    }
+  ]
+}
+
+IMPORTANT: 
+- If NO tasks are found, return exactly: {"tasks": []}
+- Do not include any text before or after the JSON
+- Ensure the JSON is valid and properly formatted
+
+Guidelines:
+- Only extract tasks clearly assigned to {USER_NAME}
+- Set confidence 0.0-1.0 based on how clear the task assignment is
+- Set autoAdd to true only for confidence > 0.7 and clear action items
+- Include context showing where in the note this task was found
+- Look for action words: "need to", "should", "must", "todo", "remind", etc.`;

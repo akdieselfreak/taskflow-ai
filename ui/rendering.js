@@ -7,11 +7,13 @@ export class TaskRenderer {
         this.appState = appState;
         this.completedSectionVisible = false;
         this.postponedSectionVisible = false;
+        this.pendingSectionVisible = false;
     }
 
     renderAll() {
         try {
             this.renderTodayTasks();
+            this.renderPendingTasks();
             this.renderCompletedTasks();
             this.renderPostponedTasks();
             this.updateTaskCounts();
@@ -93,6 +95,58 @@ export class TaskRenderer {
         }
     }
 
+    renderPendingTasks() {
+        const container = document.getElementById('pendingTasksList');
+        if (!container) return;
+
+        const pendingTasks = this.appState.pendingTasks || [];
+        
+        if (pendingTasks.length === 0) {
+            container.innerHTML = '<p style="color: #666; font-size: 0.9rem;">No tasks pending approval</p>';
+            return;
+        }
+
+        const sortedTasks = pendingTasks
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            
+        container.innerHTML = sortedTasks.map(task => `
+            <div class="pending-task-item" data-pending-id="${task.id}">
+                <div class="pending-task-content">
+                    <div class="pending-task-title">${this.escapeHtml(task.title)}</div>
+                    <div class="pending-task-description">${this.escapeHtml(task.description || '')}</div>
+                    <div class="pending-task-meta">
+                        <span class="confidence-badge" title="AI Confidence">${Math.round(task.confidence * 100)}%</span>
+                        <span class="source-note" title="From note">${this.escapeHtml(task.sourceNoteTitle)}</span>
+                        <span class="created-time" title="Created">${this.formatTime(task.createdAt)}</span>
+                    </div>
+                    ${task.context ? `<div class="pending-task-context">${this.escapeHtml(task.context)}</div>` : ''}
+                </div>
+                <div class="pending-task-actions">
+                    <button class="approve-btn" onclick="approvePendingTask('${task.id}')" title="Approve and add to tasks">
+                        ✓ Approve
+                    </button>
+                    <button class="reject-btn" onclick="rejectPendingTask('${task.id}')" title="Reject and remove">
+                        ✗ Reject
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+        // Add bulk actions if there are multiple tasks
+        if (pendingTasks.length > 1) {
+            container.innerHTML += `
+                <div class="pending-bulk-actions">
+                    <button class="bulk-approve-btn" onclick="bulkApprovePendingTasks()">
+                        ✓ Approve All (${pendingTasks.length})
+                    </button>
+                    <button class="bulk-reject-btn" onclick="bulkRejectPendingTasks()">
+                        ✗ Reject All
+                    </button>
+                </div>
+            `;
+        }
+    }
+
     renderPostponedTasks() {
         const container = document.getElementById('postponedTasksList');
         if (!container) return;
@@ -122,9 +176,11 @@ export class TaskRenderer {
 
     updateTaskCounts() {
         const counts = this.appState.getTaskCounts();
+        const pendingCount = this.appState.getPendingTasksCount();
         
         const completedCountEl = document.getElementById('completedCount');
         const postponedCountEl = document.getElementById('postponedCount');
+        const pendingCountEl = document.getElementById('pendingCount');
         
         if (completedCountEl) {
             completedCountEl.textContent = counts.completed;
@@ -132,6 +188,10 @@ export class TaskRenderer {
         
         if (postponedCountEl) {
             postponedCountEl.textContent = counts.postponed;
+        }
+        
+        if (pendingCountEl) {
+            pendingCountEl.textContent = pendingCount;
         }
     }
 
@@ -141,6 +201,8 @@ export class TaskRenderer {
             const button = document.querySelector('.completed-btn');
             const postponedSection = document.getElementById('postponedSection');
             const postponedButton = document.querySelector('.postponed-btn');
+            const pendingSection = document.getElementById('pendingSection');
+            const pendingButton = document.querySelector('.pending-btn');
             
             if (!section || !button) return;
             
@@ -149,11 +211,16 @@ export class TaskRenderer {
             if (this.completedSectionVisible) {
                 section.style.display = 'block';
                 button.classList.add('active');
-                // Hide postponed if open
+                // Hide other sections if open
                 if (postponedSection && postponedButton) {
                     postponedSection.style.display = 'none';
                     postponedButton.classList.remove('active');
                     this.postponedSectionVisible = false;
+                }
+                if (pendingSection && pendingButton) {
+                    pendingSection.style.display = 'none';
+                    pendingButton.classList.remove('active');
+                    this.pendingSectionVisible = false;
                 }
                 
                 // Scroll to section
@@ -169,12 +236,55 @@ export class TaskRenderer {
         }
     }
 
+    togglePendingTasks() {
+        try {
+            const section = document.getElementById('pendingSection');
+            const button = document.querySelector('.pending-btn');
+            const completedSection = document.getElementById('completedSection');
+            const completedButton = document.querySelector('.completed-btn');
+            const postponedSection = document.getElementById('postponedSection');
+            const postponedButton = document.querySelector('.postponed-btn');
+            
+            if (!section || !button) return;
+            
+            this.pendingSectionVisible = !this.pendingSectionVisible;
+            
+            if (this.pendingSectionVisible) {
+                section.style.display = 'block';
+                button.classList.add('active');
+                // Hide other sections if open
+                if (completedSection && completedButton) {
+                    completedSection.style.display = 'none';
+                    completedButton.classList.remove('active');
+                    this.completedSectionVisible = false;
+                }
+                if (postponedSection && postponedButton) {
+                    postponedSection.style.display = 'none';
+                    postponedButton.classList.remove('active');
+                    this.postponedSectionVisible = false;
+                }
+                
+                // Scroll to section
+                section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else {
+                section.style.display = 'none';
+                button.classList.remove('active');
+            }
+            
+            Logger.log('Toggled pending tasks visibility', { visible: this.pendingSectionVisible });
+        } catch (error) {
+            Logger.error('Failed to toggle pending tasks', error);
+        }
+    }
+
     togglePostponedTasks() {
         try {
             const section = document.getElementById('postponedSection');
             const button = document.querySelector('.postponed-btn');
             const completedSection = document.getElementById('completedSection');
             const completedButton = document.querySelector('.completed-btn');
+            const pendingSection = document.getElementById('pendingSection');
+            const pendingButton = document.querySelector('.pending-btn');
             
             if (!section || !button) return;
             
@@ -183,11 +293,16 @@ export class TaskRenderer {
             if (this.postponedSectionVisible) {
                 section.style.display = 'block';
                 button.classList.add('active');
-                // Hide completed if open
+                // Hide other sections if open
                 if (completedSection && completedButton) {
                     completedSection.style.display = 'none';
                     completedButton.classList.remove('active');
                     this.completedSectionVisible = false;
+                }
+                if (pendingSection && pendingButton) {
+                    pendingSection.style.display = 'none';
+                    pendingButton.classList.remove('active');
+                    this.pendingSectionVisible = false;
                 }
                 
                 // Scroll to section

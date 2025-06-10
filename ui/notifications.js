@@ -16,15 +16,15 @@ export class NotificationManager {
         this.showNotification(message, 'error');
     }
 
-    showInfo(message) {
-        this.showNotification(message, 'info');
+    showInfo(message, clickHandler = null) {
+        this.showNotification(message, 'info', clickHandler);
     }
 
     showWarning(message) {
         this.showNotification(message, 'warning');
     }
 
-    showNotification(message, type = 'info') {
+    showNotification(message, type = 'info', clickHandler = null) {
         try {
             // Remove existing notification
             if (this.currentNotification) {
@@ -32,11 +32,12 @@ export class NotificationManager {
                 this.currentNotification = null;
             }
             
-            const notification = this.createNotificationElement(message, type);
+            const notification = this.createNotificationElement(message, type, clickHandler);
             document.body.appendChild(notification);
             this.currentNotification = notification;
             
-            // Auto-remove after 5 seconds
+            // Auto-remove after 5 seconds (longer for clickable notifications)
+            const autoRemoveTime = clickHandler ? 8000 : 5000;
             setTimeout(() => {
                 if (notification.parentElement) {
                     notification.remove();
@@ -44,7 +45,7 @@ export class NotificationManager {
                         this.currentNotification = null;
                     }
                 }
-            }, 5000);
+            }, autoRemoveTime);
             
             Logger.log(`Notification shown: ${type} - ${message}`);
         } catch (error) {
@@ -54,9 +55,23 @@ export class NotificationManager {
         }
     }
 
-    createNotificationElement(message, type) {
+    createNotificationElement(message, type, clickHandler = null) {
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
+        
+        if (clickHandler) {
+            notification.classList.add('notification-clickable');
+            notification.style.cursor = 'pointer';
+            notification.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('notification-close')) {
+                    clickHandler();
+                    notification.remove();
+                    if (this.currentNotification === notification) {
+                        this.currentNotification = null;
+                    }
+                }
+            });
+        }
         
         const iconMap = {
             success: '✓',
@@ -101,6 +116,16 @@ export class NotificationManager {
                 max-width: 400px;
                 box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
                 font-size: 0.9rem;
+            }
+            
+            .notification-clickable {
+                transition: all 0.2s ease;
+            }
+            
+            .notification-clickable:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+                border-color: rgba(255, 255, 255, 0.2);
             }
             
             .notification-success {

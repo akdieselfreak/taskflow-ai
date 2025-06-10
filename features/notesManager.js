@@ -1,6 +1,6 @@
 // features/notesManager.js - Notes Management System
 
-import { Logger } from '../core/config.js';
+import { Logger, DEFAULT_NOTES_TITLE_PROMPT, DEFAULT_NOTES_SUMMARY_PROMPT, DEFAULT_NOTES_TASK_EXTRACTION_PROMPT } from '../core/config.js';
 import { StorageManager } from '../core/storage.js';
 
 export class NotesManager {
@@ -14,6 +14,18 @@ export class NotesManager {
         if (!this.appState.notes) {
             this.appState.notes = [];
         }
+    }
+
+    getNotesTitlePrompt() {
+        return this.appState.onboardingData.notesTitlePrompt || DEFAULT_NOTES_TITLE_PROMPT;
+    }
+
+    getNotesSummaryPrompt() {
+        return this.appState.onboardingData.notesSummaryPrompt || DEFAULT_NOTES_SUMMARY_PROMPT;
+    }
+
+    getNotesTaskExtractionPrompt() {
+        return this.appState.onboardingData.notesTaskExtractionPrompt || DEFAULT_NOTES_TASK_EXTRACTION_PROMPT;
     }
 
     async createNote(noteData) {
@@ -121,7 +133,12 @@ export class NotesManager {
                 await this.autoAddTasksFromNote(noteId, taskAnalysis.autoAddTasks);
             }
 
-            Logger.log(`Note AI processing completed: ${noteId} - title updated: ${!!updates.title}, summary: ${summary.length} chars, tasks: ${taskAnalysis.tasks.length}, auto-added: ${taskAnalysis.autoAddTasks.length}`);
+            // Add low-confidence tasks to pending approval queue
+            if (taskAnalysis.pendingApprovalTasks && taskAnalysis.pendingApprovalTasks.length > 0) {
+                await this.addTasksToPendingApproval(noteId, taskAnalysis.pendingApprovalTasks);
+            }
+
+            Logger.log(`Note AI processing completed: ${noteId} - title updated: ${!!updates.title}, summary: ${summary.length} chars, tasks: ${taskAnalysis.tasks.length}, auto-added: ${taskAnalysis.autoAddTasks.length}, pending approval: ${taskAnalysis.pendingApprovalTasks?.length || 0}`);
 
         } catch (error) {
             Logger.error('AI processing failed for note', error);
@@ -131,18 +148,8 @@ export class NotesManager {
 
     async generateAITitle(note) {
         try {
-            const prompt = `Generate a concise, descriptive title for this note content. The title should be 3-8 words and capture the main topic or action.
-
-Content: ${note.content}
-
-Requirements:
-- Be specific and descriptive
-- Use action words when appropriate (e.g., "Review", "Plan", "Meeting with")
-- Avoid generic words like "Note", "Thoughts", "Ideas"
-- Focus on the key subject or outcome
-- Keep it under 60 characters
-
-Return only the title, nothing else. Do not use quotes or formatting.`;
+            const promptTemplate = this.getNotesTitlePrompt();
+            const prompt = promptTemplate.replace('{CONTENT}', note.content);
 
             Logger.log('Generating AI title for note with content length:', note.content.length);
 
@@ -187,11 +194,8 @@ Return only the title, nothing else. Do not use quotes or formatting.`;
 
     async generateNoteSummary(note) {
         try {
-            const prompt = `Summarize this note in 1-2 sentences. Focus on key points, actions, and outcomes.
-
-Content: ${note.content}
-
-Be extremely concise and specific. Avoid generic phrases.`;
+            const promptTemplate = this.getNotesSummaryPrompt();
+            const prompt = promptTemplate.replace('{CONTENT}', note.content);
 
             const response = await this.aiService.makeRequest(prompt, {
                 maxTokens: 100,
@@ -216,36 +220,12 @@ Be extremely concise and specific. Avoid generic phrases.`;
                 nameContext = `Note: ${userName} may also be referred to as: ${variations.slice(1).join(', ')}.`;
             }
 
-            const prompt = `Analyze this note for potential tasks assigned to ${userName}.
-${nameContext}
-
-Title: ${note.title}
-Content: ${note.content}
-
-You must return ONLY a valid JSON object with this exact structure:
-{
-  "tasks": [
-    {
-      "title": "Task title",
-      "description": "What needs to be done",
-      "confidence": 0.8,
-      "context": "Where this task was mentioned in the note",
-      "autoAdd": true
-    }
-  ]
-}
-
-IMPORTANT: 
-- If NO tasks are found, return exactly: {"tasks": []}
-- Do not include any text before or after the JSON
-- Ensure the JSON is valid and properly formatted
-
-Guidelines:
-- Only extract tasks clearly assigned to ${userName}
-- Set confidence 0.0-1.0 based on how clear the task assignment is
-- Set autoAdd to true only for confidence > 0.7 and clear action items
-- Include context showing where in the note this task was found
-- Look for action words: "need to", "should", "must", "todo", "remind", etc.`;
+            const promptTemplate = this.getNotesTaskExtractionPrompt();
+            const prompt = promptTemplate
+                .replace(/{USER_NAME}/g, userName)
+                .replace('{NAME_CONTEXT}', nameContext)
+                .replace('{TITLE}', note.title)
+                .replace('{CONTENT}', note.content);
 
             Logger.log('Analyzing note for tasks with prompt length:', prompt.length);
 
@@ -278,14 +258,19 @@ Guidelines:
 
             const tasks = taskData.tasks || [];
             
-            // Separate auto-add tasks from suggestions
-            const autoAddTasks = tasks.filter(task => task.autoAdd && task.confidence > 0.7);
+            // Separate tasks based on confidence threshold (95% = 0.95)
+            const highConfidenceTasks = tasks.filter(task => task.confidence >= 0.95);
+            const lowConfidenceTasks = tasks.filter(task => task.confidence < 0.95);
             
-            Logger.log(`Found ${tasks.length} tasks, ${autoAddTasks.length} will be auto-added`);
+            // Only auto-add high confidence tasks (ignore autoAdd field, use only confidence)
+            const autoAddTasks = highConfidenceTasks;
+            
+            Logger.log(`Found ${tasks.length} tasks: ${highConfidenceTasks.length} high confidence (≥95%), ${lowConfidenceTasks.length} low confidence (<95%), ${autoAddTasks.length} will be auto-added`);
             
             return {
                 tasks: tasks,
-                autoAddTasks: autoAddTasks
+                autoAddTasks: autoAddTasks,
+                pendingApprovalTasks: lowConfidenceTasks
             };
 
         } catch (error) {
@@ -320,8 +305,8 @@ Guidelines:
 
             if (addedTasks.length > 0) {
                 const message = addedTasks.length === 1 
-                    ? `Auto-added 1 task from note "${note.title}"`
-                    : `Auto-added ${addedTasks.length} tasks from note "${note.title}"`;
+                    ? `Auto-added 1 high-confidence task from note "${note.title}"`
+                    : `Auto-added ${addedTasks.length} high-confidence tasks from note "${note.title}"`;
                 
                 this.notifications.showSuccess(message);
                 Logger.log(`Auto-added ${addedTasks.length} tasks from note: ${noteId}`);
@@ -595,5 +580,258 @@ Main activities, decisions, and tasks. Be direct and concise.`;
             processed: notes.filter(note => note.aiProcessed).length,
             totalTags: this.getAllTags().length
         };
+    }
+
+    // ============================================
+    // PENDING TASK APPROVAL METHODS
+    // ============================================
+
+    async addTasksToPendingApproval(noteId, tasks) {
+        try {
+            const note = this.appState.getNote(noteId);
+            if (!note) {
+                Logger.error('Note not found for pending tasks', { noteId });
+                return;
+            }
+
+            const pendingTasks = tasks.map(taskData => ({
+                id: this.generatePendingTaskId(),
+                title: taskData.title,
+                description: taskData.description,
+                context: taskData.context,
+                confidence: taskData.confidence,
+                sourceNoteId: noteId,
+                sourceNoteTitle: note.title,
+                createdAt: new Date().toISOString(),
+                status: 'pending'
+            }));
+
+            // Add to app state pending tasks
+            if (!this.appState.pendingTasks) {
+                this.appState.pendingTasks = [];
+            }
+            
+            this.appState.pendingTasks.push(...pendingTasks);
+            
+            // Save to storage
+            StorageManager.savePendingTasks(this.appState.pendingTasks);
+
+            // Show notification about pending tasks with action
+            const message = pendingTasks.length === 1 
+                ? `1 task needs approval from note "${note.title}" - Click to review`
+                : `${pendingTasks.length} tasks need approval from note "${note.title}" - Click to review`;
+            
+            this.notifications.showInfo(message, () => {
+                // Switch to tasks tab and show pending section
+                if (typeof switchTab === 'function') {
+                    switchTab('tasks');
+                }
+                if (typeof togglePendingTasks === 'function') {
+                    togglePendingTasks();
+                }
+            });
+            Logger.log(`Added ${pendingTasks.length} tasks to pending approval from note: ${noteId}`);
+
+            return pendingTasks;
+        } catch (error) {
+            Logger.error('Failed to add tasks to pending approval', error);
+            return [];
+        }
+    }
+
+    generatePendingTaskId() {
+        return 'pending_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    getPendingTasks() {
+        return this.appState.pendingTasks || [];
+    }
+
+    async approvePendingTask(pendingTaskId) {
+        try {
+            const pendingTasks = this.appState.pendingTasks || [];
+            const pendingTaskIndex = pendingTasks.findIndex(task => task.id === pendingTaskId);
+            
+            if (pendingTaskIndex === -1) {
+                throw new Error('Pending task not found');
+            }
+
+            const pendingTask = pendingTasks[pendingTaskIndex];
+            
+            // Create actual task
+            const task = {
+                id: this.appState.generateTaskId(),
+                name: pendingTask.title,
+                description: pendingTask.description,
+                notes: `Approved from note: "${pendingTask.sourceNoteTitle}"\nContext: ${pendingTask.context}\nAI Confidence: ${Math.round(pendingTask.confidence * 100)}%`,
+                date: new Date().toISOString().split('T')[0],
+                createdAt: new Date().toISOString(),
+                type: 'note-extracted-approved',
+                completed: false,
+                postponed: false,
+                sourceNoteId: pendingTask.sourceNoteId,
+                extractionConfidence: pendingTask.confidence,
+                approvedAt: new Date().toISOString()
+            };
+
+            // Add to tasks
+            this.appState.addTask(task);
+
+            // Remove from pending tasks
+            this.appState.pendingTasks.splice(pendingTaskIndex, 1);
+            StorageManager.savePendingTasks(this.appState.pendingTasks);
+
+            this.notifications.showSuccess(`Task "${task.name}" approved and added to your list!`);
+            Logger.log(`Approved pending task: ${pendingTaskId} -> ${task.id}`);
+
+            return task;
+        } catch (error) {
+            Logger.error('Failed to approve pending task', error);
+            this.notifications.showError('Failed to approve task. Please try again.');
+            throw error;
+        }
+    }
+
+    async rejectPendingTask(pendingTaskId) {
+        try {
+            const pendingTasks = this.appState.pendingTasks || [];
+            const pendingTaskIndex = pendingTasks.findIndex(task => task.id === pendingTaskId);
+            
+            if (pendingTaskIndex === -1) {
+                throw new Error('Pending task not found');
+            }
+
+            const pendingTask = pendingTasks[pendingTaskIndex];
+            
+            // Remove from pending tasks
+            this.appState.pendingTasks.splice(pendingTaskIndex, 1);
+            StorageManager.savePendingTasks(this.appState.pendingTasks);
+
+            this.notifications.showSuccess(`Task "${pendingTask.title}" rejected and removed.`);
+            Logger.log(`Rejected pending task: ${pendingTaskId}`);
+
+            return true;
+        } catch (error) {
+            Logger.error('Failed to reject pending task', error);
+            this.notifications.showError('Failed to reject task. Please try again.');
+            throw error;
+        }
+    }
+
+    async bulkApprovePendingTasks(pendingTaskIds) {
+        try {
+            const approvedTasks = [];
+            
+            for (const taskId of pendingTaskIds) {
+                try {
+                    const task = await this.approvePendingTask(taskId);
+                    approvedTasks.push(task);
+                } catch (error) {
+                    Logger.error(`Failed to approve task ${taskId}`, error);
+                }
+            }
+
+            if (approvedTasks.length > 0) {
+                const message = approvedTasks.length === 1 
+                    ? '1 task approved and added!'
+                    : `${approvedTasks.length} tasks approved and added!`;
+                
+                this.notifications.showSuccess(message);
+            }
+
+            return approvedTasks;
+        } catch (error) {
+            Logger.error('Failed to bulk approve pending tasks', error);
+            this.notifications.showError('Failed to approve tasks. Please try again.');
+            return [];
+        }
+    }
+
+    async bulkRejectPendingTasks(pendingTaskIds) {
+        try {
+            let rejectedCount = 0;
+            
+            for (const taskId of pendingTaskIds) {
+                try {
+                    await this.rejectPendingTask(taskId);
+                    rejectedCount++;
+                } catch (error) {
+                    Logger.error(`Failed to reject task ${taskId}`, error);
+                }
+            }
+
+            if (rejectedCount > 0) {
+                const message = rejectedCount === 1 
+                    ? '1 task rejected and removed.'
+                    : `${rejectedCount} tasks rejected and removed.`;
+                
+                this.notifications.showSuccess(message);
+            }
+
+            return rejectedCount;
+        } catch (error) {
+            Logger.error('Failed to bulk reject pending tasks', error);
+            this.notifications.showError('Failed to reject tasks. Please try again.');
+            return 0;
+        }
+    }
+
+    getPendingTasksStats() {
+        const pendingTasks = this.appState.pendingTasks || [];
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const yesterday = new Date(today.getTime() - (24 * 60 * 60 * 1000));
+
+        return {
+            total: pendingTasks.length,
+            today: pendingTasks.filter(task => new Date(task.createdAt) >= today).length,
+            yesterday: pendingTasks.filter(task => {
+                const createdAt = new Date(task.createdAt);
+                return createdAt >= yesterday && createdAt < today;
+            }).length,
+            byConfidence: {
+                high: pendingTasks.filter(task => task.confidence >= 0.8).length,
+                medium: pendingTasks.filter(task => task.confidence >= 0.6 && task.confidence < 0.8).length,
+                low: pendingTasks.filter(task => task.confidence < 0.6).length
+            }
+        };
+    }
+
+    showPendingTasksDialog() {
+        const pendingTasks = this.getPendingTasks();
+        
+        if (pendingTasks.length === 0) {
+            alert('No pending tasks to review.');
+            return;
+        }
+
+        const taskList = pendingTasks.map((task, index) => 
+            `${index + 1}. "${task.title}" (${Math.round(task.confidence * 100)}% confidence)\n   From: ${task.sourceNoteTitle}\n   Context: ${task.context}`
+        ).join('\n\n');
+
+        const message = `Tasks Pending Approval (${pendingTasks.length}):\n\n${taskList}\n\nWould you like to approve all tasks?`;
+        
+        if (confirm(message)) {
+            // Approve all tasks
+            const taskIds = pendingTasks.map(task => task.id);
+            this.bulkApprovePendingTasks(taskIds);
+        } else {
+            // Show individual approval dialog
+            this.showIndividualApprovalDialog(pendingTasks);
+        }
+    }
+
+    showIndividualApprovalDialog(pendingTasks) {
+        for (let i = 0; i < pendingTasks.length; i++) {
+            const task = pendingTasks[i];
+            const message = `Task ${i + 1} of ${pendingTasks.length}:\n\n"${task.title}"\n\nConfidence: ${Math.round(task.confidence * 100)}%\nFrom note: ${task.sourceNoteTitle}\nContext: ${task.context}\n\nApprove this task?`;
+            
+            const result = confirm(message);
+            if (result) {
+                this.approvePendingTask(task.id);
+            } else {
+                this.rejectPendingTask(task.id);
+            }
+        }
     }
 }

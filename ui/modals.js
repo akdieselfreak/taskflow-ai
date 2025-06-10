@@ -1,6 +1,6 @@
 // ui/modals.js - Enhanced Modal Management with Tabbed Settings
 
-import { Logger } from '../core/config.js';
+import { Logger, DEFAULT_NOTES_TITLE_PROMPT, DEFAULT_NOTES_SUMMARY_PROMPT, DEFAULT_NOTES_TASK_EXTRACTION_PROMPT } from '../core/config.js';
 import { StorageManager } from '../core/storage.js';
 
 export class ModalManager {
@@ -40,6 +40,9 @@ export class ModalManager {
                     break;
                 case 'settings':
                     this.openSettingsModal();
+                    break;
+                case 'pendingTasks':
+                    this.openPendingTasksModal();
                     break;
                 default:
                     Logger.warn('Unknown modal type', { type });
@@ -393,7 +396,7 @@ export class ModalManager {
             <div class="tab-section">
                 <h3>AI System Prompt</h3>
                 <div class="setting-item">
-                    <label for="systemPrompt">Custom AI Instructions</label>
+                    <label for="systemPrompt">Task Extraction Prompt</label>
                     <p class="setting-description">Customize how AI extracts tasks from your text</p>
                     <textarea id="systemPrompt" class="system-prompt-textarea" 
                               placeholder="Enter custom system prompt...">${this.taskExtraction.getSystemPrompt()}</textarea>
@@ -406,6 +409,62 @@ export class ModalManager {
                             Reset to Default
                         </button>
                         <button class="btn btn-primary" onclick="taskFlowApp?.saveSystemPrompt?.()">
+                            Save Prompt
+                        </button>
+                    </div>
+                </div>
+
+                <h3>Notes AI Prompts</h3>
+                <div class="setting-item">
+                    <label for="notesTitlePrompt">Notes Title Generation Prompt</label>
+                    <p class="setting-description">Customize how AI generates titles for your notes</p>
+                    <textarea id="notesTitlePrompt" class="system-prompt-textarea" 
+                              placeholder="Enter notes title prompt...">${this.getNotesPrompt('title')}</textarea>
+                    <div class="setting-hint">
+                        <strong>💡 Tip:</strong> Use {CONTENT} as a placeholder for the note content.
+                    </div>
+                    <div class="prompt-actions">
+                        <button class="btn btn-secondary" onclick="taskFlowApp?.resetNotesPrompt?.('title')">
+                            Reset to Default
+                        </button>
+                        <button class="btn btn-primary" onclick="taskFlowApp?.saveNotesPrompt?.('title')">
+                            Save Prompt
+                        </button>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <label for="notesSummaryPrompt">Notes Summary Generation Prompt</label>
+                    <p class="setting-description">Customize how AI creates summaries for your notes</p>
+                    <textarea id="notesSummaryPrompt" class="system-prompt-textarea" 
+                              placeholder="Enter notes summary prompt...">${this.getNotesPrompt('summary')}</textarea>
+                    <div class="setting-hint">
+                        <strong>💡 Tip:</strong> Use {CONTENT} as a placeholder for the note content.
+                    </div>
+                    <div class="prompt-actions">
+                        <button class="btn btn-secondary" onclick="taskFlowApp?.resetNotesPrompt?.('summary')">
+                            Reset to Default
+                        </button>
+                        <button class="btn btn-primary" onclick="taskFlowApp?.saveNotesPrompt?.('summary')">
+                            Save Prompt
+                        </button>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <label for="notesTaskExtractionPrompt">Notes Task Extraction Prompt</label>
+                    <p class="setting-description">Customize how AI extracts tasks from your notes</p>
+                    <textarea id="notesTaskExtractionPrompt" class="system-prompt-textarea" 
+                              placeholder="Enter notes task extraction prompt...">${this.getNotesPrompt('taskExtraction')}</textarea>
+                    <div class="setting-hint">
+                        <strong>💡 Tip:</strong> Use {USER_NAME}, {NAME_CONTEXT}, {TITLE}, and {CONTENT} as placeholders. 
+                        Must return valid JSON with tasks array.
+                    </div>
+                    <div class="prompt-actions">
+                        <button class="btn btn-secondary" onclick="taskFlowApp?.resetNotesPrompt?.('taskExtraction')">
+                            Reset to Default
+                        </button>
+                        <button class="btn btn-primary" onclick="taskFlowApp?.saveNotesPrompt?.('taskExtraction')">
                             Save Prompt
                         </button>
                     </div>
@@ -554,6 +613,33 @@ export class ModalManager {
         return div.innerHTML;
     }
 
+    getNotesPrompt(type) {
+        const onboardingData = this.appState.onboardingData;
+        switch (type) {
+            case 'title':
+                return onboardingData.notesTitlePrompt || this.getDefaultNotesPrompt('title');
+            case 'summary':
+                return onboardingData.notesSummaryPrompt || this.getDefaultNotesPrompt('summary');
+            case 'taskExtraction':
+                return onboardingData.notesTaskExtractionPrompt || this.getDefaultNotesPrompt('taskExtraction');
+            default:
+                return '';
+        }
+    }
+
+    getDefaultNotesPrompt(type) {
+        switch (type) {
+            case 'title':
+                return DEFAULT_NOTES_TITLE_PROMPT;
+            case 'summary':
+                return DEFAULT_NOTES_SUMMARY_PROMPT;
+            case 'taskExtraction':
+                return DEFAULT_NOTES_TASK_EXTRACTION_PROMPT;
+            default:
+                return '';
+        }
+    }
+
     // Global functions that will be attached to the app instance
     setupGlobalModalFunctions(app) {
         app.switchSettingsTab = (tab) => {
@@ -642,6 +728,58 @@ export class ModalManager {
             if (textarea) {
                 textarea.value = this.taskExtraction.getSystemPrompt();
                 this.notifications.showSuccess('Reset to default prompt');
+            }
+        };
+
+        app.saveNotesPrompt = (type) => {
+            const elementId = `notes${type.charAt(0).toUpperCase() + type.slice(1)}Prompt`;
+            const prompt = document.getElementById(elementId)?.value?.trim();
+            
+            if (!prompt) {
+                this.notifications.showError('Please enter a valid prompt');
+                return;
+            }
+            
+            let success = false;
+            switch (type) {
+                case 'title':
+                    success = StorageManager.saveNotesTitlePrompt(prompt);
+                    if (success) {
+                        this.appState.updateOnboardingField('notesTitlePrompt', prompt);
+                    }
+                    break;
+                case 'summary':
+                    success = StorageManager.saveNotesSummaryPrompt(prompt);
+                    if (success) {
+                        this.appState.updateOnboardingField('notesSummaryPrompt', prompt);
+                    }
+                    break;
+                case 'taskExtraction':
+                    if (!prompt.toLowerCase().includes('json')) {
+                        if (!confirm('Your prompt doesn\'t mention JSON format. This may cause task extraction to fail. Continue anyway?')) {
+                            return;
+                        }
+                    }
+                    success = StorageManager.saveNotesTaskExtractionPrompt(prompt);
+                    if (success) {
+                        this.appState.updateOnboardingField('notesTaskExtractionPrompt', prompt);
+                    }
+                    break;
+            }
+            
+            if (success) {
+                this.notifications.showSuccess(`Notes ${type} prompt saved successfully!`);
+            } else {
+                this.notifications.showError(`Failed to save notes ${type} prompt. Please try again.`);
+            }
+        };
+
+        app.resetNotesPrompt = (type) => {
+            const elementId = `notes${type.charAt(0).toUpperCase() + type.slice(1)}Prompt`;
+            const textarea = document.getElementById(elementId);
+            if (textarea) {
+                textarea.value = this.getDefaultNotesPrompt(type);
+                this.notifications.showSuccess(`Reset to default ${type} prompt`);
             }
         };
     }

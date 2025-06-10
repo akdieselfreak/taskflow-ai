@@ -8,6 +8,7 @@ export class AppState extends EventTarget {
         this.tasks = [];
         this.extractedTasks = [];
         this.notes = [];
+        this.pendingTasks = [];
         this.currentTaskId = null;
         this.currentNoteId = null;
         this.currentStep = 1;
@@ -200,6 +201,35 @@ export class AppState extends EventTarget {
     setCurrentNoteId(noteId) {
         this.currentNoteId = noteId;
         this.dispatchEvent(new CustomEvent('currentNoteChanged', { detail: { noteId } }));
+    }
+
+    // Pending Tasks Management
+    setPendingTasks(pendingTasks) {
+        this.pendingTasks = pendingTasks;
+        this.dispatchEvent(new CustomEvent('pendingTasksChanged', { detail: { pendingTasks } }));
+    }
+
+    addPendingTask(pendingTask) {
+        this.pendingTasks.unshift(pendingTask);
+        this.dispatchEvent(new CustomEvent('pendingTaskAdded', { detail: { pendingTask } }));
+        this.dispatchEvent(new CustomEvent('pendingTasksChanged', { detail: { pendingTasks: this.pendingTasks } }));
+    }
+
+    removePendingTask(pendingTaskId) {
+        const taskIndex = this.pendingTasks.findIndex(t => t.id === pendingTaskId);
+        if (taskIndex !== -1) {
+            const removedTask = this.pendingTasks.splice(taskIndex, 1)[0];
+            this.dispatchEvent(new CustomEvent('pendingTaskRemoved', { detail: { pendingTaskId, task: removedTask } }));
+            this.dispatchEvent(new CustomEvent('pendingTasksChanged', { detail: { pendingTasks: this.pendingTasks } }));
+        }
+    }
+
+    getPendingTask(pendingTaskId) {
+        return this.pendingTasks.find(t => t.id === pendingTaskId);
+    }
+
+    getPendingTasksCount() {
+        return this.pendingTasks.length;
     }
 
     // Debug Methods

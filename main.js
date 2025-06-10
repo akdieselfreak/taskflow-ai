@@ -144,11 +144,13 @@ class TaskFlowApp {
         // Setup global modal functions
         this.modalManager.setupGlobalModalFunctions(this);
         
-        // Load tasks and notes
+        // Load tasks, notes, and pending tasks
         const tasks = StorageManager.loadTasks();
         const notes = StorageManager.loadNotes();
+        const pendingTasks = StorageManager.loadPendingTasks();
         this.appState.setTasks(tasks);
         this.appState.setNotes(notes);
+        this.appState.setPendingTasks(pendingTasks);
         
         // Setup auto-save
         this.setupAutoSave();
@@ -239,6 +241,7 @@ class TaskFlowApp {
             try {
                 StorageManager.saveTasks(this.appState.tasks);
                 StorageManager.saveNotes(this.appState.notes);
+                StorageManager.savePendingTasks(this.appState.pendingTasks);
             } catch (error) {
                 Logger.error('Auto-save failed', error);
             }
@@ -267,6 +270,10 @@ class TaskFlowApp {
             if (this.modalManager) {
                 this.modalManager.updateExtractedTasksPreview();
             }
+        });
+
+        this.appState.addEventListener('pendingTasksChanged', () => {
+            StorageManager.savePendingTasks(this.appState.pendingTasks);
         });
 
         this.appState.addEventListener('onboardingDataChanged', () => {
@@ -867,6 +874,87 @@ class TaskFlowApp {
         }
     }
 
+    togglePendingTasks() {
+        if (this.taskRenderer) {
+            this.taskRenderer.togglePendingTasks();
+        }
+    }
+
+    async approvePendingTask(pendingTaskId) {
+        try {
+            if (this.notesManager) {
+                const task = await this.notesManager.approvePendingTask(pendingTaskId);
+                // Re-render to update counts and UI
+                if (this.taskRenderer) {
+                    this.taskRenderer.renderAll();
+                }
+                return task;
+            }
+        } catch (error) {
+            Logger.error('Failed to approve pending task', error);
+            this.notifications.showError('Failed to approve task. Please try again.');
+        }
+    }
+
+    async rejectPendingTask(pendingTaskId) {
+        try {
+            if (this.notesManager) {
+                await this.notesManager.rejectPendingTask(pendingTaskId);
+                // Re-render to update counts and UI
+                if (this.taskRenderer) {
+                    this.taskRenderer.renderAll();
+                }
+            }
+        } catch (error) {
+            Logger.error('Failed to reject pending task', error);
+            this.notifications.showError('Failed to reject task. Please try again.');
+        }
+    }
+
+    async bulkApprovePendingTasks() {
+        try {
+            const pendingTasks = this.appState.pendingTasks || [];
+            if (pendingTasks.length === 0) {
+                this.notifications.showInfo('No pending tasks to approve.');
+                return;
+            }
+
+            const taskIds = pendingTasks.map(task => task.id);
+            if (this.notesManager) {
+                await this.notesManager.bulkApprovePendingTasks(taskIds);
+                // Re-render to update counts and UI
+                if (this.taskRenderer) {
+                    this.taskRenderer.renderAll();
+                }
+            }
+        } catch (error) {
+            Logger.error('Failed to bulk approve pending tasks', error);
+            this.notifications.showError('Failed to approve tasks. Please try again.');
+        }
+    }
+
+    async bulkRejectPendingTasks() {
+        try {
+            const pendingTasks = this.appState.pendingTasks || [];
+            if (pendingTasks.length === 0) {
+                this.notifications.showInfo('No pending tasks to reject.');
+                return;
+            }
+
+            const taskIds = pendingTasks.map(task => task.id);
+            if (this.notesManager) {
+                await this.notesManager.bulkRejectPendingTasks(taskIds);
+                // Re-render to update counts and UI
+                if (this.taskRenderer) {
+                    this.taskRenderer.renderAll();
+                }
+            }
+        } catch (error) {
+            Logger.error('Failed to bulk reject pending tasks', error);
+            this.notifications.showError('Failed to reject tasks. Please try again.');
+        }
+    }
+
     openSettings() {
         this.modalManager?.openModal('settings');
     }
@@ -1189,6 +1277,13 @@ function initializeApp() {
     window.clearTagFilters = () => app.notesRenderer?.clearTagFilters();
     window.clearSearch = () => app.clearSearch();
     window.openNote = (noteId) => app.notesModalManager?.openModal('view', noteId);
+    
+    // Pending task approval functions
+    window.togglePendingTasks = () => app.togglePendingTasks();
+    window.approvePendingTask = (pendingTaskId) => app.approvePendingTask(pendingTaskId);
+    window.rejectPendingTask = (pendingTaskId) => app.rejectPendingTask(pendingTaskId);
+    window.bulkApprovePendingTasks = () => app.bulkApprovePendingTasks();
+    window.bulkRejectPendingTasks = () => app.bulkRejectPendingTasks();
     
     // Performance debugging functions
     window.getPerformanceReport = () => app.getPerformanceReport();
