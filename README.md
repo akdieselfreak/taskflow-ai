@@ -147,44 +147,61 @@ DATA_RATE_LIMIT_MAX_REQUESTS=200
 
 ## 🐳 Docker Deployment
 
-### Quick Start with Docker
+### Step-by-Step Docker Compose Setup
 
+#### 1. Clone and Navigate
 ```bash
-# IMPORTANT: Set up environment variables first
-cp .env.docker .env
-
-# Edit .env and set a secure JWT_SECRET
-nano .env
-
-# Build and run with Docker Compose
-docker-compose up -d
-
-# Access at http://localhost:8080
+git clone https://github.com/akdieselfreak/taskflow-ai.git
+cd taskflow-ai
 ```
 
-### Environment Setup for Docker
-
-**CRITICAL:** You must set a secure `JWT_SECRET` before running Docker:
-
+#### 2. Set Up Environment Variables (REQUIRED)
 ```bash
 # Copy the Docker environment template
 cp .env.docker .env
 
-# Edit the .env file and change JWT_SECRET to a secure random string
-# Example: JWT_SECRET=your-super-secure-random-string-here-at-least-32-characters
+# Generate a secure JWT secret
+openssl rand -base64 32
+
+# Edit the .env file and replace the JWT_SECRET with your generated secret
+nano .env
 ```
 
-### Development with Docker
-
+**Your .env file should look like this:**
 ```bash
-# Development environment (also requires .env file)
+JWT_SECRET=your-generated-secret-from-openssl-command-above
+DATABASE_PATH=/app/data/taskflow.db
+NODE_ENV=production
+PORT=3001
+```
+
+#### 3. Deploy with Docker Compose
+```bash
+# Build and start the application
+docker-compose up -d
+
+# Check if containers are running
+docker-compose ps
+
+# View logs if needed
+docker-compose logs -f
+```
+
+#### 4. Access Your Application
+- **Frontend:** http://localhost:8080
+- **Health Check:** http://localhost:8080/health
+
+### Alternative Deployment Options
+
+#### Development Environment
+```bash
+# After setting up .env file above
 docker-compose -f docker-compose.dev.yml up -d
 ```
 
-### With Local AI (Ollama)
-
+#### With Local AI (Ollama)
 ```bash
-# Include Ollama service
+# After setting up .env file above
 docker-compose --profile with-ollama up -d
 ```
 
