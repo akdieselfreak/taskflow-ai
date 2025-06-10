@@ -150,16 +150,34 @@ DATA_RATE_LIMIT_MAX_REQUESTS=200
 ### Quick Start with Docker
 
 ```bash
+# IMPORTANT: Set up environment variables first
+cp .env.docker .env
+
+# Edit .env and set a secure JWT_SECRET
+nano .env
+
 # Build and run with Docker Compose
 docker-compose up -d
 
 # Access at http://localhost:8080
 ```
 
+### Environment Setup for Docker
+
+**CRITICAL:** You must set a secure `JWT_SECRET` before running Docker:
+
+```bash
+# Copy the Docker environment template
+cp .env.docker .env
+
+# Edit the .env file and change JWT_SECRET to a secure random string
+# Example: JWT_SECRET=your-super-secure-random-string-here-at-least-32-characters
+```
+
 ### Development with Docker
 
 ```bash
-# Development environment
+# Development environment (also requires .env file)
 docker-compose -f docker-compose.dev.yml up -d
 ```
 
@@ -176,11 +194,12 @@ docker-compose --profile with-ollama up -d
 # Build image
 docker build -t taskflow-ai .
 
-# Run container
+# Run container (MUST include JWT_SECRET)
 docker run -d \
-  -p 8080:8080 \
+  -p 8080:3001 \
   -v $(pwd)/data:/app/data \
-  -e JWT_SECRET=your-secret-key \
+  -e JWT_SECRET=your-super-secure-random-string-here \
+  -e DATABASE_PATH=/app/data/taskflow.db \
   taskflow-ai
 ```
 
@@ -268,13 +287,19 @@ For complete functionality including authentication:
 - **Platform as a Service** - Heroku, Railway, DigitalOcean App Platform
 
 ### Production Checklist
-- [ ] Set secure `JWT_SECRET` environment variable
+- [ ] **Set secure `JWT_SECRET` environment variable** (REQUIRED - minimum 32 characters)
 - [ ] Configure proper `CORS_ORIGIN` for your domain
 - [ ] Set up HTTPS/SSL certificates
 - [ ] Configure database backups
 - [ ] Set up monitoring and logging
 - [ ] Test authentication flow
 - [ ] Verify AI service connections
+
+### Docker Security Notes
+- **JWT_SECRET is REQUIRED** - The application will not start without it
+- Use a cryptographically secure random string (minimum 32 characters)
+- Never use the default values from .env.example in production
+- Generate a new secret: `openssl rand -base64 32`
 
 ## 📚 Documentation
 
