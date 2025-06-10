@@ -157,8 +157,8 @@ cd taskflow-ai
 
 #### 2. Set Up Environment Variables (REQUIRED)
 ```bash
-# Copy the Docker environment template
-cp .env.docker .env
+# Copy the environment template
+cp .env.example .env
 
 # Generate a secure JWT secret
 openssl rand -base64 32
@@ -195,13 +195,13 @@ docker-compose logs -f
 
 #### Development Environment
 ```bash
-# After setting up .env file above
+# After setting up .env file (cp .env.example .env)
 docker-compose -f docker-compose.dev.yml up -d
 ```
 
 #### With Local AI (Ollama)
 ```bash
-# After setting up .env file above
+# After setting up .env file (cp .env.example .env)
 docker-compose --profile with-ollama up -d
 ```
 
