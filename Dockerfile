@@ -1,46 +1,40 @@
-# Use nginx alpine for a lightweight web server
-FROM nginx:alpine
+# Use Node.js alpine for a lightweight runtime with database support
+FROM node:18-alpine
+
+# Install system dependencies for better-sqlite3
+RUN apk add --no-cache python3 make g++ sqlite
 
 # Set working directory
-WORKDIR /usr/share/nginx/html
+WORKDIR /app
 
-# Remove default nginx static assets
-RUN rm -rf ./*
+# Copy package files first for better Docker layer caching
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production
 
 # Copy application files
-COPY index.html .
-COPY main.js .
-COPY manual.html .
-COPY styles.css .
-COPY core/ ./core/
-COPY features/ ./features/
-COPY services/ ./services/
-COPY ui/ ./ui/
+COPY . .
 
-# Copy custom nginx configuration
-COPY nginx.conf /etc/nginx/nginx.conf
+# Create data directory for SQLite database
+RUN mkdir -p /app/data
 
 # Create a non-root user for security
 RUN addgroup -g 1001 -S taskflow && \
     adduser -S taskflow -u 1001 -G taskflow
 
-# Set proper permissions for nginx to run as non-root
-RUN chown -R taskflow:taskflow /usr/share/nginx/html && \
-    chown -R taskflow:taskflow /var/cache/nginx && \
-    chown -R taskflow:taskflow /var/log/nginx && \
-    chown -R taskflow:taskflow /etc/nginx/conf.d && \
-    touch /tmp/nginx.pid && \
-    chown taskflow:taskflow /tmp/nginx.pid
+# Set proper permissions
+RUN chown -R taskflow:taskflow /app
 
 # Switch to non-root user
 USER taskflow
 
-# Expose port 8080
-EXPOSE 8080
+# Expose port 3001
+EXPOSE 3001
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
 
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Start the Node.js server
+CMD ["node", "server.js"]
