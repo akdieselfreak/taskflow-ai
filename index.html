@@ -33,37 +33,18 @@
 
                 <!-- Step 2: Authentication (now the first step) -->
                 <div class="onboarding-step" id="step2">
-                    <h2 class="onboarding-title">Account Required</h2>
-                    <p class="onboarding-subtitle">TaskFlow AI requires an account to securely store your data</p>
+                    <h2 class="onboarding-title">Welcome to TaskFlow AI</h2>
+                    <p class="onboarding-subtitle">Smart task management with AI</p>
                     
                     <div class="storage-options">
                         <button class="storage-option" onclick="showStep('step2-signin')">
                             <div class="storage-icon">🔑</div>
                             <h3>Sign In</h3>
-                            <p><strong>Existing account</strong></p>
-                            <ul class="storage-benefits">
-                                <li>✅ Access your existing data</li>
-                                <li>✅ All your saved tasks & notes</li>
-                                <li>✅ Multi-device sync</li>
-                                <li>✅ Secure cloud storage</li>
-                            </ul>
                         </button>
                         <button class="storage-option" onclick="showStep('step2-account')">
                             <div class="storage-icon">☁️</div>
                             <h3>Create Account</h3>
-                            <p><strong>Multi-device sync</strong></p>
-                            <ul class="storage-benefits">
-                                <li>✅ Access from any device</li>
-                                <li>✅ Automatic backup</li>
-                                <li>✅ Never lose your data</li>
-                                <li>✅ Secure cloud storage</li>
-                            </ul>
                         </button>
-                    </div>
-                    
-                    <div class="auth-notice">
-                        <p><strong>Why do I need an account?</strong></p>
-                        <p>Your tasks, notes, and AI configurations are securely stored in the cloud, ensuring you never lose your data and can access it from any device.</p>
                     </div>
                 </div>
 
@@ -86,7 +67,6 @@
                     
                     <div class="button-group">
                         <button class="btn btn-primary" onclick="signInUser()">Sign In</button>
-                        <button class="btn btn-secondary" onclick="showStep('step2')">Back</button>
                     </div>
                     
                     <div class="auth-status" id="signInStatus"></div>
