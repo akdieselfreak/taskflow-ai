@@ -37,7 +37,7 @@
                     <p class="onboarding-subtitle">TaskFlow AI requires an account to securely store your data</p>
                     
                     <div class="storage-options">
-                        <button class="storage-option" onclick="selectStorageMode('signin')">
+                        <button class="storage-option" onclick="showStep('step2-signin')">
                             <div class="storage-icon">🔑</div>
                             <h3>Sign In</h3>
                             <p><strong>Existing account</strong></p>
@@ -48,7 +48,7 @@
                                 <li>✅ Secure cloud storage</li>
                             </ul>
                         </button>
-                        <button class="storage-option" onclick="selectStorageMode('account')">
+                        <button class="storage-option" onclick="showStep('step2-account')">
                             <div class="storage-icon">☁️</div>
                             <h3>Create Account</h3>
                             <p><strong>Multi-device sync</strong></p>
@@ -64,10 +64,6 @@
                     <div class="auth-notice">
                         <p><strong>Why do I need an account?</strong></p>
                         <p>Your tasks, notes, and AI configurations are securely stored in the cloud, ensuring you never lose your data and can access it from any device.</p>
-                    </div>
-                    
-                    <div class="button-group">
-                        <button class="btn btn-secondary" onclick="previousStep(2)">Back</button>
                     </div>
                 </div>
 
@@ -90,7 +86,7 @@
                     
                     <div class="button-group">
                         <button class="btn btn-primary" onclick="signInUser()">Sign In</button>
-                        <button class="btn btn-secondary" onclick="previousStep('2-signin')">Back</button>
+                        <button class="btn btn-secondary" onclick="showStep('step2')">Back</button>
                     </div>
                     
                     <div class="auth-status" id="signInStatus"></div>
@@ -126,7 +122,7 @@
                     
                     <div class="button-group">
                         <button class="btn btn-primary" onclick="createAccount()">Create Account</button>
-                        <button class="btn btn-secondary" onclick="previousStep('2-account')">Back</button>
+                        <button class="btn btn-secondary" onclick="showStep('step2')">Back</button>
                     </div>
                     
                     <div class="auth-status" id="accountCreationStatus"></div>
