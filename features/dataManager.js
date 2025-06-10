@@ -70,10 +70,12 @@ export class DataManager {
                 source: 'TaskFlow AI',
                 taskCount: this.appState.tasks.length,
                 noteCount: this.appState.notes.length,
+                pendingTaskCount: this.appState.pendingTasks?.length || 0,
                 userName: this.appState.onboardingData.userName
             },
             tasks: this.appState.tasks,
             notes: this.appState.notes,
+            pendingTasks: this.appState.pendingTasks || [],
             configuration: {
                 userName: this.appState.onboardingData.userName,
                 nameVariations: this.appState.onboardingData.nameVariations,
@@ -356,25 +358,36 @@ export class DataManager {
             
             // Build success message
             let successMessage = '';
+            const importedItems = [];
+            
             if (result.importedTasks > 0) {
-                successMessage += `Imported ${result.importedTasks} tasks`;
+                let taskMsg = `${result.importedTasks} tasks`;
                 if (result.skippedTasks > 0) {
-                    successMessage += ` (${result.skippedTasks} duplicates skipped)`;
+                    taskMsg += ` (${result.skippedTasks} duplicates skipped)`;
                 }
+                importedItems.push(taskMsg);
             }
             
             if (result.importedNotes > 0) {
-                if (successMessage) successMessage += ' and ';
-                successMessage += `${result.importedNotes} notes`;
+                let noteMsg = `${result.importedNotes} notes`;
                 if (result.skippedNotes > 0) {
-                    successMessage += ` (${result.skippedNotes} duplicates skipped)`;
+                    noteMsg += ` (${result.skippedNotes} duplicates skipped)`;
                 }
+                importedItems.push(noteMsg);
             }
             
-            if (!successMessage) {
+            if (result.importedPendingTasks > 0) {
+                let pendingMsg = `${result.importedPendingTasks} pending tasks`;
+                if (result.skippedPendingTasks > 0) {
+                    pendingMsg += ` (${result.skippedPendingTasks} duplicates skipped)`;
+                }
+                importedItems.push(pendingMsg);
+            }
+            
+            if (importedItems.length === 0) {
                 successMessage = 'No new items to import (all were duplicates)';
             } else {
-                successMessage += '!';
+                successMessage = 'Imported ' + importedItems.join(', ') + '!';
             }
             
             this.notifications.showSuccess(successMessage);
@@ -410,6 +423,7 @@ export class DataManager {
         return {
             tasks: data.tasks,
             notes: data.notes || [],
+            pendingTasks: data.pendingTasks || [],
             configuration: data.configuration,
             metadata: data.metadata
         };
@@ -417,17 +431,65 @@ export class DataManager {
 
     importFromMarkdown(content) {
         const tasks = [];
+        const notes = [];
         const lines = content.split('\n');
         
         let currentTask = null;
+        let currentNote = null;
         let inTaskSection = false;
+        let inNotesSection = false;
+        let noteContent = [];
         
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
             
-            // Check for task items (both [ ] and [x])
+            // Check for section headers
+            if (line.startsWith('##') || line.startsWith('###')) {
+                // Save any pending note content
+                if (currentNote && noteContent.length > 0) {
+                    currentNote.content = noteContent.join('\n').trim();
+                    notes.push(currentNote);
+                    currentNote = null;
+                    noteContent = [];
+                }
+                
+                // Add any pending task
+                if (currentTask) {
+                    tasks.push(currentTask);
+                    currentTask = null;
+                }
+                
+                // Determine section type
+                const headerText = line.toLowerCase();
+                inTaskSection = headerText.includes('task');
+                inNotesSection = headerText.includes('note');
+                
+                // Check if this is a note title (### format in notes section)
+                if (line.startsWith('###') && inNotesSection) {
+                    let noteTitle = line.replace(/^###\s*/, '').trim();
+                    // Remove Obsidian link formatting [[title]]
+                    noteTitle = noteTitle.replace(/^\[\[(.+)\]\]$/, '$1');
+                    
+                    currentNote = {
+                        id: this.generateNoteId(),
+                        title: noteTitle,
+                        content: '',
+                        tags: [],
+                        summary: '',
+                        aiProcessed: false,
+                        extractedTasks: [],
+                        createdAt: new Date().toISOString(),
+                        modifiedAt: new Date().toISOString()
+                    };
+                    noteContent = [];
+                }
+                
+                continue;
+            }
+            
+            // Process task items (both [ ] and [x])
             const taskMatch = line.match(/^-\s*\[([ x])\]\s*(.+)$/);
-            if (taskMatch) {
+            if (taskMatch && inTaskSection) {
                 if (currentTask) {
                     tasks.push(currentTask);
                 }
@@ -459,8 +521,8 @@ export class DataManager {
                 continue;
             }
             
-            // Check for task details (indented lines)
-            if (currentTask && line.startsWith('  ')) {
+            // Process task details (indented lines under tasks)
+            if (currentTask && line.startsWith('  ') && inTaskSection) {
                 const detail = line.substring(2).trim();
                 if (detail.startsWith('**Description:**')) {
                     currentTask.description = detail.replace('**Description:**', '').trim();
@@ -469,20 +531,77 @@ export class DataManager {
                 } else if (detail.startsWith('- ')) {
                     currentTask.description = detail.substring(2);
                 }
+                continue;
             }
             
-            // Check for headers (tasks sections)
-            if (line.startsWith('##')) {
-                inTaskSection = line.toLowerCase().includes('task');
+            // Process note metadata and content
+            if (currentNote) {
+                if (line.startsWith('**Created:**')) {
+                    const dateStr = line.replace('**Created:**', '').trim();
+                    try {
+                        currentNote.createdAt = new Date(dateStr).toISOString();
+                    } catch (e) {
+                        // Keep default if date parsing fails
+                    }
+                } else if (line.startsWith('**Modified:**')) {
+                    const dateStr = line.replace('**Modified:**', '').trim();
+                    try {
+                        currentNote.modifiedAt = new Date(dateStr).toISOString();
+                    } catch (e) {
+                        // Keep default if date parsing fails
+                    }
+                } else if (line.startsWith('**Tags:**')) {
+                    const tagsStr = line.replace('**Tags:**', '').trim();
+                    currentNote.tags = tagsStr.split(/\s+/)
+                        .filter(tag => tag.startsWith('#'))
+                        .map(tag => tag.substring(1));
+                } else if (line.startsWith('**AI Summary:**')) {
+                    currentNote.summary = line.replace('**AI Summary:**', '').trim();
+                    currentNote.aiProcessed = true;
+                } else if (line.startsWith('> [!ai] AI Summary')) {
+                    // Obsidian callout format
+                    currentNote.aiProcessed = true;
+                    // Look for the next line(s) with summary content
+                    let j = i + 1;
+                    let summaryLines = [];
+                    while (j < lines.length && lines[j].trim().startsWith('> ')) {
+                        summaryLines.push(lines[j].replace(/^>\s*/, ''));
+                        j++;
+                    }
+                    currentNote.summary = summaryLines.join('\n').trim();
+                    i = j - 1; // Skip processed lines
+                } else if (line.startsWith('**Extracted Tasks:**')) {
+                    // Parse extracted tasks count
+                    const match = line.match(/(\d+)\s+tasks?\s+found/);
+                    if (match) {
+                        currentNote.extractedTasks = new Array(parseInt(match[1])).fill(null);
+                    }
+                } else if (line === '---') {
+                    // End of note content
+                    if (noteContent.length > 0) {
+                        currentNote.content = noteContent.join('\n').trim();
+                        notes.push(currentNote);
+                        currentNote = null;
+                        noteContent = [];
+                    }
+                } else if (line && !line.startsWith('**') && !line.startsWith('> [!')) {
+                    // Regular note content
+                    noteContent.push(lines[i]); // Use original line with formatting
+                }
             }
         }
         
-        // Add the last task
+        // Add any remaining items
         if (currentTask) {
             tasks.push(currentTask);
         }
         
-        return { tasks };
+        if (currentNote && noteContent.length > 0) {
+            currentNote.content = noteContent.join('\n').trim();
+            notes.push(currentNote);
+        }
+        
+        return { tasks, notes };
     }
 
     importFromCSV(content) {
@@ -530,10 +649,15 @@ export class DataManager {
         const existingNotes = this.appState.notes;
         const existingNoteTitles = new Set(existingNotes.map(n => n.title.toLowerCase()));
         
+        const existingPendingTasks = this.appState.pendingTasks || [];
+        const existingPendingTaskTitles = new Set(existingPendingTasks.map(t => t.title?.toLowerCase() || t.name?.toLowerCase()));
+        
         let importedTasks = 0;
         let skippedTasks = 0;
         let importedNotes = 0;
         let skippedNotes = 0;
+        let importedPendingTasks = 0;
+        let skippedPendingTasks = 0;
         
         // Process tasks
         for (const task of importedData.tasks) {
@@ -567,6 +691,24 @@ export class DataManager {
             }
         }
         
+        // Process pending tasks if they exist
+        if (importedData.pendingTasks && importedData.pendingTasks.length > 0) {
+            for (const pendingTask of importedData.pendingTasks) {
+                // Skip duplicates based on pending task title/name
+                const taskIdentifier = (pendingTask.title || pendingTask.name || '').toLowerCase();
+                if (existingPendingTaskTitles.has(taskIdentifier)) {
+                    skippedPendingTasks++;
+                    continue;
+                }
+                
+                // Validate and clean pending task data
+                const cleanPendingTask = this.validateAndCleanPendingTask(pendingTask);
+                
+                this.appState.addPendingTask(cleanPendingTask);
+                importedPendingTasks++;
+            }
+        }
+        
         return { 
             importedTasks, 
             skippedTasks, 
@@ -574,6 +716,9 @@ export class DataManager {
             importedNotes,
             skippedNotes,
             totalNotes: importedData.notes ? importedData.notes.length : 0,
+            importedPendingTasks,
+            skippedPendingTasks,
+            totalPendingTasks: importedData.pendingTasks ? importedData.pendingTasks.length : 0,
             // Legacy properties for backward compatibility
             imported: importedTasks,
             skipped: skippedTasks,
@@ -612,8 +757,25 @@ export class DataManager {
         };
     }
 
+    validateAndCleanPendingTask(pendingTask) {
+        return {
+            id: pendingTask.id || this.generatePendingTaskId(),
+            title: pendingTask.title || pendingTask.name || 'Imported Pending Task',
+            context: pendingTask.context || '',
+            confidence: typeof pendingTask.confidence === 'number' ? pendingTask.confidence : 0.5,
+            sourceNoteTitle: pendingTask.sourceNoteTitle || 'Imported Note',
+            sourceNoteId: pendingTask.sourceNoteId || null,
+            createdAt: pendingTask.createdAt || new Date().toISOString(),
+            extractedFrom: pendingTask.extractedFrom || 'import'
+        };
+    }
+
     generateNoteId() {
         return 'note-' + Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9);
+    }
+
+    generatePendingTaskId() {
+        return 'pending-' + Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9);
     }
 
     // ====== UTILITY FUNCTIONS ======
