@@ -5,83 +5,75 @@ export class AuthUI {
         this.currentUser = null;
         this.authToken = localStorage.getItem('auth_token');
         this.isLoggedIn = false;
-        this.init();
+        this.modalCreated = false;
+        // Don't call init() in constructor - let main app call it
     }
 
-    init() {
-        this.createAuthModal();
-        this.checkAuthStatus();
+    async init() {
+        // Don't create the modal automatically - let onboarding handle auth flow
+        // Only check auth status silently
+        await this.checkAuthStatus();
     }
 
+    // Only create modal when explicitly requested (not automatically)
     createAuthModal() {
+        if (this.modalCreated) return;
+        
         const modalHTML = `
-            <div id="auth-modal" class="modal" style="display: none;">
-                <div class="modal-content">
+            <div id="auth-modal" class="modal-overlay" style="display: none;">
+                <div class="modal">
                     <div class="modal-header">
-                        <h2 id="auth-modal-title">Welcome to TaskFlow AI</h2>
-                        <span class="close" id="auth-modal-close">&times;</span>
+                        <h2 id="auth-modal-title">Account Access</h2>
+                        <button class="modal-close" id="auth-modal-close">&times;</button>
                     </div>
                     <div class="modal-body">
-                        <div id="auth-tabs">
-                            <button id="login-tab" class="auth-tab active">Login</button>
-                            <button id="register-tab" class="auth-tab">Register</button>
-                            <button id="guest-tab" class="auth-tab">Continue as Guest</button>
+                        <div id="auth-tabs" class="auth-tabs">
+                            <button id="login-tab" class="auth-tab active">Sign In</button>
+                            <button id="register-tab" class="auth-tab">Create Account</button>
                         </div>
                         
                         <!-- Login Form -->
                         <form id="login-form" class="auth-form">
                             <div class="form-group">
-                                <label for="login-username">Username or Email:</label>
-                                <input type="text" id="login-username" required>
+                                <label for="login-username">Username or Email</label>
+                                <input type="text" id="login-username" placeholder="Enter your username or email..." required>
                             </div>
                             <div class="form-group">
-                                <label for="login-password">Password:</label>
-                                <input type="password" id="login-password" required>
+                                <label for="login-password">Password</label>
+                                <input type="password" id="login-password" placeholder="Enter your password..." required>
                             </div>
-                            <button type="submit" class="btn btn-primary">Login</button>
+                            <div class="button-group">
+                                <button type="submit" class="btn btn-primary">Sign In</button>
+                                <button type="button" class="btn btn-secondary" onclick="closeAuthModal()">Cancel</button>
+                            </div>
                             <div id="login-error" class="error-message"></div>
                         </form>
 
                         <!-- Register Form -->
                         <form id="register-form" class="auth-form" style="display: none;">
                             <div class="form-group">
-                                <label for="register-username">Username:</label>
-                                <input type="text" id="register-username" required>
+                                <label for="register-username">Username</label>
+                                <input type="text" id="register-username" placeholder="Choose a username..." required>
                             </div>
                             <div class="form-group">
-                                <label for="register-email">Email (optional):</label>
-                                <input type="email" id="register-email">
+                                <label for="register-email">Email (optional)</label>
+                                <input type="email" id="register-email" placeholder="your@email.com">
+                                <p class="input-hint">For account recovery and notifications</p>
                             </div>
                             <div class="form-group">
-                                <label for="register-password">Password:</label>
-                                <input type="password" id="register-password" required minlength="6">
+                                <label for="register-password">Password</label>
+                                <input type="password" id="register-password" placeholder="Create a secure password..." required minlength="6">
                             </div>
                             <div class="form-group">
-                                <label for="register-confirm">Confirm Password:</label>
-                                <input type="password" id="register-confirm" required>
+                                <label for="register-confirm">Confirm Password</label>
+                                <input type="password" id="register-confirm" placeholder="Confirm your password..." required>
                             </div>
-                            <button type="submit" class="btn btn-primary">Register</button>
+                            <div class="button-group">
+                                <button type="submit" class="btn btn-primary">Create Account</button>
+                                <button type="button" class="btn btn-secondary" onclick="closeAuthModal()">Cancel</button>
+                            </div>
                             <div id="register-error" class="error-message"></div>
                         </form>
-
-                        <!-- Guest Mode Info -->
-                        <div id="guest-info" class="auth-form" style="display: none;">
-                            <p><strong>Guest Mode:</strong> Your data will be stored locally in your browser only.</p>
-                            <p><strong>Limitations:</strong></p>
-                            <ul>
-                                <li>No cross-device synchronization</li>
-                                <li>Data may be lost if browser storage is cleared</li>
-                                <li>No backup/restore capabilities</li>
-                            </ul>
-                            <p><strong>Benefits of Creating an Account:</strong></p>
-                            <ul>
-                                <li>✅ Access your tasks from any device</li>
-                                <li>✅ Automatic data backup</li>
-                                <li>✅ Never lose your data</li>
-                            </ul>
-                            <button id="continue-guest" class="btn btn-secondary">Continue as Guest</button>
-                            <button id="create-account-instead" class="btn btn-primary">Create Account Instead</button>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -89,24 +81,23 @@ export class AuthUI {
 
         document.body.insertAdjacentHTML('beforeend', modalHTML);
         this.attachEventListeners();
+        this.modalCreated = true;
     }
 
     attachEventListeners() {
         // Tab switching
         document.getElementById('login-tab').addEventListener('click', () => this.showTab('login'));
         document.getElementById('register-tab').addEventListener('click', () => this.showTab('register'));
-        document.getElementById('guest-tab').addEventListener('click', () => this.showTab('guest'));
 
         // Form submissions
         document.getElementById('login-form').addEventListener('submit', (e) => this.handleLogin(e));
         document.getElementById('register-form').addEventListener('submit', (e) => this.handleRegister(e));
 
-        // Guest mode
-        document.getElementById('continue-guest').addEventListener('click', () => this.continueAsGuest());
-        document.getElementById('create-account-instead').addEventListener('click', () => this.showTab('register'));
-
         // Modal close
         document.getElementById('auth-modal-close').addEventListener('click', () => this.hideAuthModal());
+        
+        // Make closeAuthModal available globally
+        window.closeAuthModal = () => this.hideAuthModal();
     }
 
     showTab(tab) {
@@ -121,8 +112,6 @@ export class AuthUI {
             document.getElementById('login-form').style.display = 'block';
         } else if (tab === 'register') {
             document.getElementById('register-form').style.display = 'block';
-        } else if (tab === 'guest') {
-            document.getElementById('guest-info').style.display = 'block';
         }
     }
 
@@ -133,6 +122,9 @@ export class AuthUI {
         const password = document.getElementById('login-password').value;
         const errorDiv = document.getElementById('login-error');
 
+        // Clear previous errors
+        errorDiv.textContent = '';
+
         try {
             const response = await fetch('/api/auth/login', {
                 method: 'POST',
@@ -142,7 +134,13 @@ export class AuthUI {
                 body: JSON.stringify({ username, password })
             });
 
-            const data = await response.json();
+            let data;
+            try {
+                data = await response.json();
+            } catch (jsonError) {
+                errorDiv.textContent = 'Server error. Please try again.';
+                return;
+            }
 
             if (response.ok) {
                 this.authToken = data.token;
@@ -157,12 +155,14 @@ export class AuthUI {
                 
                 // Show success message
                 this.showNotification('Login successful! Your data will now sync across devices.', 'success');
+                
+                // Trigger auth state change event
+                this.triggerAuthStateChange();
             } else {
                 errorDiv.textContent = data.error || 'Login failed';
             }
         } catch (error) {
             errorDiv.textContent = 'Network error. Please try again.';
-            console.error('Login error:', error);
         }
     }
 
@@ -174,6 +174,9 @@ export class AuthUI {
         const password = document.getElementById('register-password').value;
         const confirmPassword = document.getElementById('register-confirm').value;
         const errorDiv = document.getElementById('register-error');
+
+        // Clear previous errors
+        errorDiv.textContent = '';
 
         if (password !== confirmPassword) {
             errorDiv.textContent = 'Passwords do not match';
@@ -195,31 +198,19 @@ export class AuthUI {
                 this.showNotification('Registration successful! Please log in.', 'success');
                 this.showTab('login');
                 document.getElementById('login-username').value = username;
+                // Clear the register form
+                document.getElementById('register-form').reset();
             } else {
                 errorDiv.textContent = data.error || 'Registration failed';
             }
         } catch (error) {
             errorDiv.textContent = 'Network error. Please try again.';
-            console.error('Registration error:', error);
         }
-    }
-
-    continueAsGuest() {
-        this.isLoggedIn = false;
-        this.currentUser = null;
-        this.authToken = null;
-        
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user_data');
-        
-        this.hideAuthModal();
-        this.onAuthSuccess();
-        
-        this.showNotification('Continuing in guest mode. Data will be stored locally only.', 'info');
     }
 
     async checkAuthStatus() {
         if (!this.authToken) {
+            // Don't automatically show auth modal - let the app decide when to show it
             return false;
         }
 
@@ -234,38 +225,56 @@ export class AuthUI {
                 const data = await response.json();
                 this.currentUser = data.user;
                 this.isLoggedIn = true;
+                
+                // Trigger auth success callback
+                this.onAuthSuccess();
                 return true;
             } else {
-                // Token is invalid, clear it
-                this.logout();
+                // Token is invalid, clear it but don't show modal automatically
+                this.clearAuthData();
                 return false;
             }
         } catch (error) {
-            console.error('Auth verification error:', error);
+            // Network error, don't show modal automatically
             return false;
         }
     }
 
     showAuthModal() {
+        // Create modal if it doesn't exist
+        if (!this.modalCreated) {
+            this.createAuthModal();
+        }
+        
         document.getElementById('auth-modal').style.display = 'block';
         this.showTab('login');
     }
 
     hideAuthModal() {
-        document.getElementById('auth-modal').style.display = 'none';
+        const modal = document.getElementById('auth-modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
     }
 
-    logout() {
+    clearAuthData() {
         this.isLoggedIn = false;
         this.currentUser = null;
         this.authToken = null;
         
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user_data');
+    }
+
+    logout() {
+        this.clearAuthData();
         
         this.showNotification('Logged out successfully', 'info');
         
-        // Optionally reload the page or show auth modal
+        // Trigger auth state change
+        this.triggerAuthStateChange();
+        
+        // Call logout callback
         if (this.onLogout) {
             this.onLogout();
         }
@@ -314,44 +323,28 @@ export class AuthUI {
     // Show notification (assumes notification system exists)
     showNotification(message, type = 'info') {
         // This should integrate with your existing notification system
-        if (window.notifications && window.notifications.show) {
+        if (window.taskFlowApp && window.taskFlowApp.notifications) {
             if (type === 'success') {
-                window.notifications.showSuccess(message);
+                window.taskFlowApp.notifications.showSuccess(message);
             } else if (type === 'error') {
-                window.notifications.showError(message);
+                window.taskFlowApp.notifications.showError(message);
             } else {
-                window.notifications.showInfo(message);
+                window.taskFlowApp.notifications.showInfo(message);
             }
         } else {
-            // Fallback to console or alert
-            console.log(`${type.toUpperCase()}: ${message}`);
+            // Fallback - no notification system available
         }
     }
 
-    // Add user info to header
-    updateUserInterface() {
-        const headerElement = document.querySelector('.header') || document.querySelector('header');
-        
-        if (headerElement && !document.getElementById('user-info')) {
-            const userInfoHTML = `
-                <div id="user-info" class="user-info">
-                    ${this.isLoggedIn ? 
-                        `<span>Welcome, ${this.currentUser.username}!</span>
-                         <button id="logout-btn" class="btn btn-small">Logout</button>` :
-                        `<span>Guest Mode</span>
-                         <button id="login-btn" class="btn btn-small">Login</button>`
-                    }
-                </div>
-            `;
-            
-            headerElement.insertAdjacentHTML('beforeend', userInfoHTML);
-            
-            // Add event listeners
-            if (this.isLoggedIn) {
-                document.getElementById('logout-btn').addEventListener('click', () => this.logout());
-            } else {
-                document.getElementById('login-btn').addEventListener('click', () => this.showAuthModal());
+    // Trigger auth state change event
+    triggerAuthStateChange() {
+        const event = new CustomEvent('authStateChanged', {
+            detail: {
+                isAuthenticated: this.isLoggedIn,
+                user: this.currentUser,
+                token: this.authToken
             }
-        }
+        });
+        window.dispatchEvent(event);
     }
 }

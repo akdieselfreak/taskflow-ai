@@ -84,7 +84,10 @@ export class NotesModalManager {
         
         // Focus on content area
         setTimeout(() => {
-            document.getElementById('noteContent').focus();
+            const noteContent = document.getElementById('noteContent');
+            if (noteContent) {
+                noteContent.focus();
+            }
         }, 100);
     }
 

@@ -1,31 +1,53 @@
 // core/database.js - SQLite Database Layer with User Support
 
-import Database from 'better-sqlite3';
+import sqlite3 from 'sqlite3';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Logger } from './config.js';
+import { promisify } from 'util';
 
 export class DatabaseManager {
-    constructor(dbPath = './data/taskflow.db') {
+    constructor(dbPath = process.env.DATABASE_PATH || './data/taskflow.db') {
         this.dbPath = dbPath;
         this.db = null;
-        this.jwtSecret = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+        this.jwtSecret = process.env.JWT_SECRET || 'fallback-secret-for-dev-only';
+        
+        // Warn if using fallback secret
+        if (!process.env.JWT_SECRET) {
+            Logger.warn('Using fallback JWT secret. Set JWT_SECRET environment variable for production!');
+        }
+        
         this.init();
     }
 
-    init() {
+    async init() {
         try {
             // Ensure data directory exists
-            const fs = require('fs');
-            const path = require('path');
+            const fs = await import('fs');
+            const path = await import('path');
             const dir = path.dirname(this.dbPath);
             if (!fs.existsSync(dir)) {
                 fs.mkdirSync(dir, { recursive: true });
             }
 
-            this.db = new Database(this.dbPath);
-            this.db.pragma('journal_mode = WAL'); // Better performance
-            this.createTables();
+            // Create database connection
+            this.db = new sqlite3.Database(this.dbPath, (err) => {
+                if (err) {
+                    Logger.error('Failed to connect to database', err);
+                    throw err;
+                }
+            });
+
+            // Promisify database methods
+            this.dbRun = promisify(this.db.run.bind(this.db));
+            this.dbGet = promisify(this.db.get.bind(this.db));
+            this.dbAll = promisify(this.db.all.bind(this.db));
+            this.dbExec = promisify(this.db.exec.bind(this.db));
+
+            // Set WAL mode for better performance
+            await this.dbRun('PRAGMA journal_mode = WAL');
+            
+            await this.createTables();
             Logger.log('Database initialized successfully');
         } catch (error) {
             Logger.error('Failed to initialize database', error);
@@ -33,7 +55,7 @@ export class DatabaseManager {
         }
     }
 
-    createTables() {
+    async createTables() {
         const tables = [
             // Users table
             `CREATE TABLE IF NOT EXISTS users (
@@ -110,13 +132,14 @@ export class DatabaseManager {
                 system_prompt TEXT,
                 notes_title_prompt TEXT,
                 notes_summary_prompt TEXT,
-                notes_task_extraction_prompt TEXT
+                notes_task_extraction_prompt TEXT,
+                user_name TEXT
             )`
         ];
 
-        tables.forEach(sql => {
-            this.db.exec(sql);
-        });
+        for (const sql of tables) {
+            await this.dbExec(sql);
+        }
 
         // Create indexes for better performance
         const indexes = [
@@ -127,9 +150,9 @@ export class DatabaseManager {
             'CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON user_sessions(user_id)'
         ];
 
-        indexes.forEach(sql => {
-            this.db.exec(sql);
-        });
+        for (const sql of indexes) {
+            await this.dbExec(sql);
+        }
     }
 
     // ====== USER AUTHENTICATION ======
@@ -138,17 +161,26 @@ export class DatabaseManager {
         try {
             const passwordHash = await bcrypt.hash(password, 10);
             
-            const stmt = this.db.prepare(`
+            const sql = `
                 INSERT INTO users (username, email, password_hash)
                 VALUES (?, ?, ?)
-            `);
+            `;
             
-            const result = stmt.run(username, email, passwordHash);
+            // Use a different approach - get the lastID from the result context
+            const result = await new Promise((resolve, reject) => {
+                this.db.run(sql, [username, email, passwordHash], function(err) {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve({ lastID: this.lastID, changes: this.changes });
+                    }
+                });
+            });
             
-            Logger.log('User registered successfully', { username, userId: result.lastInsertRowid });
-            return { success: true, userId: result.lastInsertRowid };
+            Logger.log('User registered successfully', { username, userId: result.lastID });
+            return { success: true, userId: result.lastID };
         } catch (error) {
-            if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+            if (error.code === 'SQLITE_CONSTRAINT' && error.message.includes('UNIQUE')) {
                 return { success: false, error: 'Username or email already exists' };
             }
             Logger.error('User registration failed', error);
@@ -158,13 +190,13 @@ export class DatabaseManager {
 
     async loginUser(username, password) {
         try {
-            const stmt = this.db.prepare(`
+            const sql = `
                 SELECT id, username, email, password_hash 
                 FROM users 
                 WHERE username = ? OR email = ?
-            `);
+            `;
             
-            const user = stmt.get(username, username);
+            const user = await this.dbGet(sql, [username, username]);
             
             if (!user) {
                 return { success: false, error: 'User not found' };
@@ -177,10 +209,10 @@ export class DatabaseManager {
             }
 
             // Update last login
-            const updateStmt = this.db.prepare(`
+            const updateSql = `
                 UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?
-            `);
-            updateStmt.run(user.id);
+            `;
+            await this.dbRun(updateSql, [user.id]);
 
             // Generate JWT token
             const token = jwt.sign(
@@ -190,11 +222,11 @@ export class DatabaseManager {
             );
 
             // Store session
-            const sessionStmt = this.db.prepare(`
+            const sessionSql = `
                 INSERT INTO user_sessions (user_id, session_token, expires_at)
                 VALUES (?, ?, datetime('now', '+30 days'))
-            `);
-            sessionStmt.run(user.id, token);
+            `;
+            await this.dbRun(sessionSql, [user.id, token]);
 
             Logger.log('User logged in successfully', { username: user.username, userId: user.id });
             
@@ -213,19 +245,19 @@ export class DatabaseManager {
         }
     }
 
-    verifyToken(token) {
+    async verifyToken(token) {
         try {
             const decoded = jwt.verify(token, this.jwtSecret);
             
             // Check if session exists and is valid
-            const stmt = this.db.prepare(`
+            const sql = `
                 SELECT s.*, u.username, u.email
                 FROM user_sessions s
                 JOIN users u ON s.user_id = u.id
                 WHERE s.session_token = ? AND s.expires_at > datetime('now')
-            `);
+            `;
             
-            const session = stmt.get(token);
+            const session = await this.dbGet(sql, [token]);
             
             if (!session) {
                 return { valid: false, error: 'Session expired or invalid' };
@@ -246,45 +278,52 @@ export class DatabaseManager {
 
     // ====== TASK OPERATIONS ======
 
-    saveTasks(userId, tasks) {
+    async saveTasks(userId, tasks) {
         try {
-            const deleteStmt = this.db.prepare('DELETE FROM tasks WHERE user_id = ?');
-            const insertStmt = this.db.prepare(`
-                INSERT INTO tasks (
-                    id, user_id, name, description, notes, completed, postponed, 
-                    type, created_at, completed_at, postponed_at, modified_at, date
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `);
-
-            const transaction = this.db.transaction(() => {
-                deleteStmt.run(userId);
+            // Use transaction for atomic operation
+            await this.dbRun('BEGIN TRANSACTION');
+            
+            try {
+                // Delete existing tasks for user
+                await this.dbRun('DELETE FROM tasks WHERE user_id = ?', [userId]);
                 
-                tasks.forEach(task => {
-                    insertStmt.run(
+                // Insert new tasks
+                const insertSql = `
+                    INSERT INTO tasks (
+                        id, user_id, name, description, notes, completed, postponed, 
+                        type, created_at, completed_at, postponed_at, modified_at, date
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `;
+
+                for (const task of tasks) {
+                    await this.dbRun(insertSql, [
                         task.id, userId, task.name, task.description || null, 
                         task.notes || null, task.completed ? 1 : 0, task.postponed ? 1 : 0,
                         task.type, task.createdAt, task.completedAt || null,
                         task.postponedAt || null, task.modifiedAt || null, task.date
-                    );
-                });
-            });
+                    ]);
+                }
 
-            transaction();
-            Logger.log('Tasks saved successfully', { userId, count: tasks.length });
-            return true;
+                await this.dbRun('COMMIT');
+                Logger.log('Tasks saved successfully', { userId, count: tasks.length });
+                return true;
+            } catch (error) {
+                await this.dbRun('ROLLBACK');
+                throw error;
+            }
         } catch (error) {
             Logger.error('Failed to save tasks', error);
             return false;
         }
     }
 
-    loadTasks(userId) {
+    async loadTasks(userId) {
         try {
-            const stmt = this.db.prepare(`
+            const sql = `
                 SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at DESC
-            `);
+            `;
             
-            const rows = stmt.all(userId);
+            const rows = await this.dbAll(sql, [userId]);
             
             const tasks = rows.map(row => ({
                 id: row.id,
@@ -311,45 +350,52 @@ export class DatabaseManager {
 
     // ====== NOTE OPERATIONS ======
 
-    saveNotes(userId, notes) {
+    async saveNotes(userId, notes) {
         try {
-            const deleteStmt = this.db.prepare('DELETE FROM notes WHERE user_id = ?');
-            const insertStmt = this.db.prepare(`
-                INSERT INTO notes (
-                    id, user_id, title, content, tags, summary, 
-                    ai_processed, extracted_tasks, created_at, modified_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `);
-
-            const transaction = this.db.transaction(() => {
-                deleteStmt.run(userId);
+            // Use transaction for atomic operation
+            await this.dbRun('BEGIN TRANSACTION');
+            
+            try {
+                // Delete existing notes for user
+                await this.dbRun('DELETE FROM notes WHERE user_id = ?', [userId]);
                 
-                notes.forEach(note => {
-                    insertStmt.run(
+                // Insert new notes
+                const insertSql = `
+                    INSERT INTO notes (
+                        id, user_id, title, content, tags, summary, 
+                        ai_processed, extracted_tasks, created_at, modified_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `;
+
+                for (const note of notes) {
+                    await this.dbRun(insertSql, [
                         note.id, userId, note.title, note.content,
                         JSON.stringify(note.tags || []), note.summary || null,
                         note.aiProcessed ? 1 : 0, JSON.stringify(note.extractedTasks || []),
                         note.createdAt, note.modifiedAt
-                    );
-                });
-            });
+                    ]);
+                }
 
-            transaction();
-            Logger.log('Notes saved successfully', { userId, count: notes.length });
-            return true;
+                await this.dbRun('COMMIT');
+                Logger.log('Notes saved successfully', { userId, count: notes.length });
+                return true;
+            } catch (error) {
+                await this.dbRun('ROLLBACK');
+                throw error;
+            }
         } catch (error) {
             Logger.error('Failed to save notes', error);
             return false;
         }
     }
 
-    loadNotes(userId) {
+    async loadNotes(userId) {
         try {
-            const stmt = this.db.prepare(`
+            const sql = `
                 SELECT * FROM notes WHERE user_id = ? ORDER BY modified_at DESC
-            `);
+            `;
             
-            const rows = stmt.all(userId);
+            const rows = await this.dbAll(sql, [userId]);
             
             const notes = rows.map(row => ({
                 id: row.id,
@@ -373,22 +419,23 @@ export class DatabaseManager {
 
     // ====== CONFIGURATION OPERATIONS ======
 
-    saveConfiguration(userId, config) {
+    async saveConfiguration(userId, config) {
         try {
-            const stmt = this.db.prepare(`
+            const sql = `
                 INSERT OR REPLACE INTO user_config (
                     user_id, service_type, api_endpoint, api_key, model_name,
                     name_variations, system_prompt, notes_title_prompt,
-                    notes_summary_prompt, notes_task_extraction_prompt
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `);
+                    notes_summary_prompt, notes_task_extraction_prompt, user_name
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `;
 
-            stmt.run(
+            await this.dbRun(sql, [
                 userId, config.service, config.endpoint, config.apiKey,
                 config.model, JSON.stringify(config.nameVariations || []),
                 config.systemPrompt, config.notesTitlePrompt,
-                config.notesSummaryPrompt, config.notesTaskExtractionPrompt
-            );
+                config.notesSummaryPrompt, config.notesTaskExtractionPrompt,
+                config.userName
+            ]);
 
             Logger.log('Configuration saved successfully', { userId });
             return true;
@@ -398,19 +445,20 @@ export class DatabaseManager {
         }
     }
 
-    loadConfiguration(userId) {
+    async loadConfiguration(userId) {
         try {
-            const stmt = this.db.prepare(`
+            const sql = `
                 SELECT * FROM user_config WHERE user_id = ?
-            `);
+            `;
             
-            const config = stmt.get(userId);
+            const config = await this.dbGet(sql, [userId]);
             
             if (!config) {
+                Logger.log('No configuration found for user', { userId });
                 return null;
             }
 
-            return {
+            const loadedConfig = {
                 service: config.service_type,
                 endpoint: config.api_endpoint,
                 apiKey: config.api_key,
@@ -419,8 +467,13 @@ export class DatabaseManager {
                 systemPrompt: config.system_prompt,
                 notesTitlePrompt: config.notes_title_prompt,
                 notesSummaryPrompt: config.notes_summary_prompt,
-                notesTaskExtractionPrompt: config.notes_task_extraction_prompt
+                notesTaskExtractionPrompt: config.notes_task_extraction_prompt,
+                hasCompletedOnboarding: true, // Mark as completed if config exists
+                userName: config.user_name || 'User' // Add default user name
             };
+
+            Logger.log('Configuration loaded successfully', { userId, service: loadedConfig.service });
+            return loadedConfig;
         } catch (error) {
             Logger.error('Failed to load configuration', error);
             return null;
@@ -431,15 +484,20 @@ export class DatabaseManager {
 
     close() {
         if (this.db) {
-            this.db.close();
-            Logger.log('Database connection closed');
+            this.db.close((err) => {
+                if (err) {
+                    Logger.error('Error closing database', err);
+                } else {
+                    Logger.log('Database connection closed');
+                }
+            });
         }
     }
 
     // Health check for Docker
-    healthCheck() {
+    async healthCheck() {
         try {
-            const result = this.db.prepare('SELECT 1 as health').get();
+            const result = await this.dbGet('SELECT 1 as health');
             return result.health === 1;
         } catch (error) {
             Logger.error('Database health check failed', error);

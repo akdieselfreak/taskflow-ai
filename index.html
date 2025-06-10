@@ -15,10 +15,10 @@
     <div class="onboarding-overlay" id="onboardingOverlay">
         <div class="onboarding-container">
             <div id="onboardingContent">
-                <!-- Step 1: Welcome & Name -->
-                <div class="onboarding-step" id="step1">
+                <!-- Step 1: Welcome & Name (now comes after authentication) -->
+                <div class="onboarding-step" id="step1" style="display: none;">
                     <h1 class="onboarding-title">Welcome to TaskFlow AI</h1>
-                    <p class="onboarding-subtitle">Let's get you set up in just a few steps</p>
+                    <p class="onboarding-subtitle">Let's personalize your experience</p>
                     
                     <div class="form-group">
                         <label for="userName">What's your name?</label>
@@ -31,8 +31,109 @@
                     </div>
                 </div>
 
-                <!-- Step 2: Choose Service -->
-                <div class="onboarding-step" id="step2" style="display: none;">
+                <!-- Step 2: Authentication (now the first step) -->
+                <div class="onboarding-step" id="step2">
+                    <h2 class="onboarding-title">Account Required</h2>
+                    <p class="onboarding-subtitle">TaskFlow AI requires an account to securely store your data</p>
+                    
+                    <div class="storage-options">
+                        <button class="storage-option" onclick="selectStorageMode('signin')">
+                            <div class="storage-icon">🔑</div>
+                            <h3>Sign In</h3>
+                            <p><strong>Existing account</strong></p>
+                            <ul class="storage-benefits">
+                                <li>✅ Access your existing data</li>
+                                <li>✅ All your saved tasks & notes</li>
+                                <li>✅ Multi-device sync</li>
+                                <li>✅ Secure cloud storage</li>
+                            </ul>
+                        </button>
+                        <button class="storage-option" onclick="selectStorageMode('account')">
+                            <div class="storage-icon">☁️</div>
+                            <h3>Create Account</h3>
+                            <p><strong>Multi-device sync</strong></p>
+                            <ul class="storage-benefits">
+                                <li>✅ Access from any device</li>
+                                <li>✅ Automatic backup</li>
+                                <li>✅ Never lose your data</li>
+                                <li>✅ Secure cloud storage</li>
+                            </ul>
+                        </button>
+                    </div>
+                    
+                    <div class="auth-notice">
+                        <p><strong>Why do I need an account?</strong></p>
+                        <p>Your tasks, notes, and AI configurations are securely stored in the cloud, ensuring you never lose your data and can access it from any device.</p>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-secondary" onclick="previousStep(2)">Back</button>
+                    </div>
+                </div>
+
+                <!-- Step 2A: Sign In -->
+                <div class="onboarding-step" id="step2-signin" style="display: none;">
+                    <h2 class="onboarding-title">Sign In to Your Account</h2>
+                    <p class="onboarding-subtitle">Welcome back! Enter your credentials to access your data</p>
+                    
+                    <form id="signInForm">
+                        <div class="form-group">
+                            <label for="signinUsername">Username or Email</label>
+                            <input type="text" id="signinUsername" placeholder="Enter your username or email..." required />
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="signinPassword">Password</label>
+                            <input type="password" id="signinPassword" placeholder="Enter your password..." required />
+                        </div>
+                    </form>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="signInUser()">Sign In</button>
+                        <button class="btn btn-secondary" onclick="previousStep('2-signin')">Back</button>
+                    </div>
+                    
+                    <div class="auth-status" id="signInStatus"></div>
+                </div>
+
+                <!-- Step 2B: Account Creation -->
+                <div class="onboarding-step" id="step2-account" style="display: none;">
+                    <h2 class="onboarding-title">Create Your Account</h2>
+                    <p class="onboarding-subtitle">Secure your data with multi-device access</p>
+                    
+                    <form id="accountCreationForm">
+                        <div class="form-group">
+                            <label for="accountUsername">Username</label>
+                            <input type="text" id="accountUsername" placeholder="Choose a username..." required />
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="accountEmail">Email (optional)</label>
+                            <input type="email" id="accountEmail" placeholder="your@email.com" />
+                            <p class="input-hint">For account recovery and notifications</p>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="accountPassword">Password</label>
+                            <input type="password" id="accountPassword" placeholder="Create a secure password..." required minlength="6" />
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="accountPasswordConfirm">Confirm Password</label>
+                            <input type="password" id="accountPasswordConfirm" placeholder="Confirm your password..." required />
+                        </div>
+                    </form>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="createAccount()">Create Account</button>
+                        <button class="btn btn-secondary" onclick="previousStep('2-account')">Back</button>
+                    </div>
+                    
+                    <div class="auth-status" id="accountCreationStatus"></div>
+                </div>
+
+                <!-- Step 3: Choose Service -->
+                <div class="onboarding-step" id="step3" style="display: none;">
                     <h2 class="onboarding-title">Choose Your AI Service</h2>
                     <p class="onboarding-subtitle">Select which AI service you'd like to use</p>
                     
@@ -55,7 +156,7 @@
                     </div>
                     
                     <div class="button-group">
-                        <button class="btn btn-secondary" onclick="previousStep(2)">Back</button>
+                        <button class="btn btn-secondary" onclick="previousStep(3)">Back</button>
                     </div>
                 </div>
 
@@ -462,6 +563,18 @@
                     <!-- Buttons will be dynamically inserted based on task state -->
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- AI Reconfiguration Modal -->
+    <div class="modal-overlay" id="aiReconfigModalOverlay">
+        <div class="modal modal-large">
+            <h2>Reconfigure AI Service</h2>
+            <p class="modal-subtitle">Update your AI service configuration</p>
+            
+            <div id="aiReconfigContent">
+                <!-- AI reconfiguration steps will be dynamically inserted here -->
+            </div>
         </div>
     </div>
 

@@ -305,11 +305,25 @@ export class NotesRenderer {
     }
 
     openEditModal(noteId) {
-        window.openNotesModal('edit', noteId);
+        if (window.openNotesModal) {
+            window.openNotesModal('edit', noteId);
+        } else {
+            // Fallback - try to access the app instance directly
+            if (window.taskFlowApp && window.taskFlowApp.notesModalManager) {
+                window.taskFlowApp.notesModalManager.openModal('edit', noteId);
+            }
+        }
     }
 
     openViewModal(noteId) {
-        window.openNotesModal('view', noteId);
+        if (window.openNotesModal) {
+            window.openNotesModal('view', noteId);
+        } else {
+            // Fallback - try to access the app instance directly
+            if (window.taskFlowApp && window.taskFlowApp.notesModalManager) {
+                window.taskFlowApp.notesModalManager.openModal('view', noteId);
+            }
+        }
     }
 
     confirmDeleteNote(noteId) {

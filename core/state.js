@@ -152,8 +152,9 @@ export class AppState extends EventTarget {
 
     // Notes Management
     setNotes(notes) {
-        this.notes = notes;
-        this.dispatchEvent(new CustomEvent('notesChanged', { detail: { notes } }));
+        // Ensure notes is always an array
+        this.notes = Array.isArray(notes) ? notes : [];
+        this.dispatchEvent(new CustomEvent('notesChanged', { detail: { notes: this.notes } }));
     }
 
     addNote(note) {

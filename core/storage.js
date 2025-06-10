@@ -274,6 +274,12 @@ export class StorageManager {
     }
 
     static migrateNotes(notes) {
+        // Ensure notes is an array before mapping
+        if (!Array.isArray(notes)) {
+            Logger.warn('migrateNotes received non-array data', { notes });
+            return [];
+        }
+        
         return notes.map(note => {
             // Ensure all required fields exist
             if (!note.id) note.id = 'note_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);

@@ -5,12 +5,15 @@ services:
     build: .
     container_name: taskflow-ai-dev
     ports:
-      - "8080:8080"
+      - "8080:3001"
     environment:
       - NODE_ENV=development
+      - PORT=3001
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-key-change-in-production}
+      - DATABASE_PATH=/app/data/taskflow.db
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -18,15 +21,11 @@ services:
     networks:
       - taskflow-network
     volumes:
-      # Mount source for development
-      - ./index.html:/usr/share/nginx/html/index.html:ro
-      - ./main.js:/usr/share/nginx/html/main.js:ro
-      - ./manual.html:/usr/share/nginx/html/manual.html:ro
-      - ./styles.css:/usr/share/nginx/html/styles.css:ro
-      - ./core:/usr/share/nginx/html/core:ro
-      - ./features:/usr/share/nginx/html/features:ro
-      - ./services:/usr/share/nginx/html/services:ro
-      - ./ui:/usr/share/nginx/html/ui:ro
+      # Mount data directory for SQLite database persistence
+      - taskflow_dev_data:/app/data
+      # Mount source for development hot-reload
+      - .:/app:ro
+      - /app/node_modules
 
   # Optional: Include Ollama service for local AI
   ollama:
@@ -51,6 +50,8 @@ services:
       - with-ollama
 
 volumes:
+  taskflow_dev_data:
+    driver: local
   ollama_data:
     driver: local
 

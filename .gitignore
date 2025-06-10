@@ -10,6 +10,7 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.env.docker
 
 # IDE files
 .vscode/
@@ -89,3 +90,11 @@ jspm_packages/
 # Temporary files
 tmp/
 temp/
+
+# Development archive (cleaned up files)
+dev-archive/
+
+# Backup files
+*.bak
+*.backup
+*~

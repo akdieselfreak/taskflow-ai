@@ -1,7 +1,6 @@
 // features/dataManager.js - Complete Data Export/Import with Obsidian Support
 
 import { CONFIG, Logger } from '../core/config.js';
-import { StorageManager } from '../core/storage.js';
 
 export class DataManager {
     constructor(appState, notifications) {

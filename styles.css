@@ -1,5 +1,30 @@
 /* TaskFlow AI - Complete Consolidated Styles */
 
+:root {
+    /* Color Variables */
+    --primary-color: #4CAF50;
+    --primary-rgb: 76, 175, 80;
+    --secondary-color: #2196F3;
+    --success-color: #4CAF50;
+    --success-rgb: 76, 175, 80;
+    --error-color: #ff4336;
+    --error-rgb: 255, 67, 54;
+    --warning-color: #FFC107;
+    --warning-rgb: 255, 193, 7;
+    
+    /* Background Colors */
+    --bg-primary: #0a0a0a;
+    --bg-secondary: rgba(255, 255, 255, 0.05);
+    --card-bg: rgba(20, 20, 20, 0.9);
+    
+    /* Text Colors */
+    --text-primary: #ffffff;
+    --text-secondary: #888888;
+    
+    /* Border Colors */
+    --border-color: rgba(255, 255, 255, 0.1);
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -464,62 +489,332 @@ h1 {
 }
 
 /* ============================================
-   MULTIPLE TASKS PREVIEW STYLES
+   MODAL STYLES
    ============================================ */
 
-/* Extracted Task Preview */
-.extracted-task-content {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 15px;
-    padding: 1.5rem;
-    margin: 1rem 0;
-    max-height: 60vh;
-    overflow-y: auto;
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
 }
 
-#extractedTaskPreview h3 {
-    color: #4CAF50;
-    margin-bottom: 1rem;
-    font-weight: 400;
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+    border: 1px solid var(--border-color);
+}
+
+.modal-overlay.active .modal {
+    transform: scale(1);
+}
+
+.modal-large {
+    max-width: 800px;
+    width: 95%;
+}
+
+.modal h2 {
+    margin: 0 0 1rem 0;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+}
+
+.modal-subtitle {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+}
+
+/* AI Reconfiguration Modal Styles */
+.ai-reconfig-steps {
+    width: 100%;
+    min-height: 400px;
+}
+
+.reconfig-step {
+    display: none;
+    animation: fadeIn 0.3s ease-in-out;
+    padding: 1rem 0;
+}
+
+.reconfig-step.active {
+    display: block;
+}
+
+.reconfig-step h3 {
+    color: var(--text-primary);
+    margin: 0 0 0.5rem 0;
+    font-size: 1.3rem;
+    font-weight: 600;
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 
-#extractedTaskPreview h3::before {
-    content: '✨';
+.reconfig-step h3::before {
+    content: "🔧";
     font-size: 1.2rem;
 }
 
-/* Individual Extracted Task Item */
-.extracted-task-item {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 15px;
-    padding: 1.5rem;
+.step-description {
+    color: var(--text-secondary);
     margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 3px solid var(--primary-color);
+}
+
+.reconfig-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+    justify-content: flex-end;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.reconfig-actions .btn {
+    min-width: 120px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 500;
+}
+
+/* Service Options for Reconfiguration */
+.service-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.service-option {
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.service-option:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.service-option.selected {
+    border-color: var(--primary-color);
+    background: linear-gradient(135deg, var(--primary-color)10, var(--card-bg));
+    box-shadow: 0 8px 25px rgba(var(--primary-rgb), 0.2);
+}
+
+.service-option .service-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.service-option h4 {
+    color: var(--text-primary);
+    margin: 0.5rem 0 0.25rem 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.service-option p {
+    color: var(--text-secondary);
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+/* Test Status Styles */
+.test-status {
+    margin: 1.5rem 0;
+}
+
+.test-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    background: var(--bg-secondary);
+    border-radius: 6px;
+    border-left: 4px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.test-item.success {
+    border-left-color: var(--success-color);
+    background: rgba(var(--success-rgb), 0.1);
+}
+
+.test-item.error {
+    border-left-color: var(--error-color);
+    background: rgba(var(--error-rgb), 0.1);
+}
+
+.test-item .test-icon {
+    font-size: 1.2rem;
+    min-width: 1.2rem;
+    text-align: center;
+}
+
+.test-item span:last-child {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+/* Connection Status Styles */
+.connection-status {
+    margin-top: 1rem;
+}
+
+.connection-status .success {
+    color: var(--success-color);
+    background: rgba(var(--success-rgb), 0.1);
+    padding: 0.75rem;
+    border-radius: 6px;
+    border-left: 4px solid var(--success-color);
+    font-weight: 500;
+}
+
+.connection-status .error {
+    color: var(--error-color);
+    background: rgba(var(--error-rgb), 0.1);
+    padding: 0.75rem;
+    border-radius: 6px;
+    border-left: 4px solid var(--error-color);
+    font-weight: 500;
+}
+
+/* Model Selection for Reconfiguration */
+.model-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.model-option {
+    cursor: pointer;
+    display: block;
+}
+
+.model-option input[type="radio"] {
+    display: none;
+}
+
+.model-card {
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1.5rem;
     transition: all 0.3s ease;
     position: relative;
 }
 
-.extracted-task-item:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.2);
+.model-option:hover .model-card {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
-.extracted-task-item:last-child {
-    margin-bottom: 0;
+.model-option input[type="radio"]:checked + .model-card {
+    border-color: var(--primary-color);
+    background: linear-gradient(135deg, var(--primary-color)10, var(--card-bg));
+    box-shadow: 0 8px 25px rgba(var(--primary-rgb), 0.2);
 }
 
-/* Task Header with Remove Button */
-.task-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+.model-card h4 {
+    color: var(--text-primary);
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.model-card p {
+    color: var(--text-secondary);
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.model-card input[type="text"] {
+    width: 100%;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.model-card input[type="text"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.2);
+}
+
+/* Animation for step transitions */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive adjustments for AI reconfig modal */
+@media (max-width: 768px) {
+    .service-options {
+        grid-template-columns: 1fr;
+    }
+    
+    .model-options {
+        grid-template-columns: 1fr;
+    }
+    
+    .reconfig-actions {
+        flex-direction: column-reverse;
+    }
+    
+    .reconfig-actions .btn {
+        width: 100%;
+    }
 }
 
 .task-header h4 {
@@ -1230,6 +1525,195 @@ h1 {
     color: #666;
     font-size: 0.8rem;
     opacity: 0.8;
+}
+
+/* ============================================
+   AUTHENTICATION & STORAGE MODE STYLES
+   ============================================ */
+
+/* Storage Mode Selection */
+.storage-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.storage-option {
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    text-align: center;
+}
+
+.storage-option:hover {
+    border-color: #007bff;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+.storage-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.storage-option h3 {
+    color: #fff;
+    margin-bottom: 0.5rem;
+    font-weight: 400;
+}
+
+.storage-option p {
+    color: #888;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.storage-benefits, .storage-limitations {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0;
+    text-align: left;
+}
+
+.storage-benefits li, .storage-limitations li {
+    padding: 2px 0;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.storage-benefits li {
+    color: #4CAF50;
+}
+
+.storage-limitations li {
+    color: #FFC107;
+}
+
+/* Account Creation Form */
+.auth-status {
+    margin-top: 15px;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.auth-status .success {
+    background-color: rgba(76, 175, 80, 0.2);
+    color: #4CAF50;
+    border: 1px solid rgba(76, 175, 80, 0.4);
+    border-radius: 8px;
+}
+
+.auth-status .error {
+    background-color: rgba(255, 67, 54, 0.2);
+    color: #ff4336;
+    border: 1px solid rgba(255, 67, 54, 0.4);
+    border-radius: 8px;
+}
+
+/* Authentication Modal Styles */
+.modal-overlay#auth-modal {
+    z-index: 3000;
+}
+
+.auth-tabs {
+    display: flex;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 15px;
+    padding: 0.5rem;
+    margin-bottom: 2rem;
+    gap: 0.5rem;
+}
+
+.auth-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 1rem;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.auth-tab:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.auth-tab.active {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4CAF50;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.auth-form {
+    margin-bottom: 1rem;
+}
+
+.auth-form .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.auth-form input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 0.75rem;
+    color: #fff;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.auth-form input:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.auth-form input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.error-message {
+    color: #ff4336;
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(255, 67, 54, 0.1);
+    border: 1px solid rgba(255, 67, 54, 0.2);
+    border-radius: 6px;
+}
+
+/* User Info Display */
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.5rem 1rem;
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-info span {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9rem;
+}
+
+.user-info .btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
 }
 
 /* ============================================
@@ -1960,6 +2444,210 @@ h1 {
     .orb {
         animation: none;
     }
+}
+
+/* ============================================
+   AUTHENTICATION MODAL STYLES
+   ============================================ */
+
+#auth-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#auth-modal .modal-content {
+    background: white;
+    border-radius: 8px;
+    padding: 0;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+#auth-modal .modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#auth-modal .modal-header h2 {
+    margin: 0;
+    color: #333;
+}
+
+#auth-modal .close {
+    font-size: 24px;
+    cursor: pointer;
+    color: #999;
+    background: none;
+    border: none;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#auth-modal .close:hover {
+    color: #333;
+}
+
+#auth-modal .modal-body {
+    padding: 20px;
+}
+
+#auth-tabs {
+    display: flex;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.auth-tab {
+    flex: 1;
+    padding: 10px 15px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #666;
+    border-bottom: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.auth-tab.active {
+    color: #007bff;
+    border-bottom-color: #007bff;
+}
+
+.auth-tab:hover {
+    color: #007bff;
+    background-color: #f8f9fa;
+}
+
+.auth-form {
+    margin-top: 20px;
+}
+
+.auth-form .form-group {
+    margin-bottom: 15px;
+}
+
+.auth-form label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #333;
+}
+
+.auth-form input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.auth-form input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.auth-form .btn {
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.auth-form .btn-primary {
+    background-color: #007bff;
+    color: white;
+}
+
+.auth-form .btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.auth-form .btn-secondary {
+    background-color: #6c757d;
+    color: white;
+    margin-right: 10px;
+    width: calc(50% - 5px);
+}
+
+.auth-form .btn-secondary:hover {
+    background-color: #545b62;
+}
+
+.error-message {
+    color: #dc3545;
+    font-size: 14px;
+    margin-top: 10px;
+    padding: 8px;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
+    display: none;
+}
+
+.error-message:not(:empty) {
+    display: block;
+}
+
+#guest-info ul {
+    margin: 10px 0;
+    padding-left: 20px;
+}
+
+#guest-info li {
+    margin: 5px 0;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    padding: 10px;
+}
+
+.user-info span {
+    color: #333;
+    font-weight: 500;
+}
+
+.user-info .btn {
+    padding: 5px 10px;
+    font-size: 12px;
+    border: 1px solid #007bff;
+    background: white;
+    color: #007bff;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.user-info .btn:hover {
+    background: #007bff;
+    color: white;
 }
 
 /* ============================================
@@ -4158,6 +4846,92 @@ mark {
     min-width: 120px;
 }
 
+/* Account Status Styles */
+.account-status {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.account-status.authenticated {
+    background: rgba(76, 175, 80, 0.1);
+    border-color: rgba(76, 175, 80, 0.3);
+}
+
+.account-status.guest {
+    background: rgba(255, 193, 7, 0.1);
+    border-color: rgba(255, 193, 7, 0.3);
+}
+
+.account-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.account-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.account-details strong {
+    color: #fff;
+    font-size: 1.1rem;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.account-details p {
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.account-actions {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.account-actions .btn {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.guest-benefits {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.guest-benefits p {
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0 0 0.75rem 0;
+    font-weight: 500;
+}
+
+.guest-benefits ul {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.guest-benefits li {
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}
+
+.guest-benefits li:last-child {
+    margin-bottom: 0;
+}
+
 /* Name Variations Actions */
 .name-variations-actions {
     display: flex;
@@ -4317,4 +5091,29 @@ mark {
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-right: 0.5rem;
+}
+
+/* Auth Notice Styles */
+.auth-notice {
+    background: rgba(33, 150, 243, 0.1);
+    border: 1px solid rgba(33, 150, 243, 0.2);
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-top: 2rem;
+    text-align: center;
+}
+
+.auth-notice p {
+    color: rgba(255, 255, 255, 0.9);
+    margin: 0 0 0.75rem 0;
+    line-height: 1.5;
+}
+
+.auth-notice p:last-child {
+    margin-bottom: 0;
+}
+
+.auth-notice strong {
+    color: #2196F3;
+    font-weight: 500;
 }

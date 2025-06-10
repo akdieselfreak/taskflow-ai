@@ -5,10 +5,12 @@
   "main": "index.html",
   "type": "module",
   "scripts": {
-    "dev": "python3 -m http.server 8000",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
     "start": "node server.js",
-    "server": "node server.js",
+    "server": "nodemon server.js",
     "client": "python3 -m http.server 8000",
+    "build": "echo 'Build process - currently using static files'",
+    "test": "echo 'No tests specified yet'",
     "docker:build": "docker build -t akdieselfreak/taskflow-ai:latest .",
     "docker:build-dev": "docker build -t akdieselfreak/taskflow-ai:dev .",
     "docker:push": "docker push akdieselfreak/taskflow-ai:latest",
@@ -35,7 +37,7 @@
   },
   "homepage": "https://github.com/akdieselfreak/taskflow-ai",
   "dependencies": {
-    "better-sqlite3": "^8.7.0",
+    "sqlite3": "^5.1.6",
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
     "express": "^4.18.2",
@@ -44,6 +46,7 @@
     "express-rate-limit": "^7.1.5"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "nodemon": "^3.0.2",
+    "concurrently": "^7.6.0"
   }
 }

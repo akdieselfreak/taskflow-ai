@@ -1,7 +1,6 @@
 // features/notesManager.js - Notes Management System
 
 import { Logger, DEFAULT_NOTES_TITLE_PROMPT, DEFAULT_NOTES_SUMMARY_PROMPT, DEFAULT_NOTES_TASK_EXTRACTION_PROMPT } from '../core/config.js';
-import { StorageManager } from '../core/storage.js';
 
 export class NotesManager {
     constructor(appState, aiService, taskExtractionManager, notifications) {
@@ -613,8 +612,7 @@ Main activities, decisions, and tasks. Be direct and concise.`;
             
             this.appState.pendingTasks.push(...pendingTasks);
             
-            // Save to storage
-            StorageManager.savePendingTasks(this.appState.pendingTasks);
+            // Note: Pending tasks are now saved automatically through app state changes
 
             // Show notification about pending tasks with action
             const message = pendingTasks.length === 1 
@@ -679,7 +677,7 @@ Main activities, decisions, and tasks. Be direct and concise.`;
 
             // Remove from pending tasks
             this.appState.pendingTasks.splice(pendingTaskIndex, 1);
-            StorageManager.savePendingTasks(this.appState.pendingTasks);
+            // Note: Pending tasks are now saved automatically through app state changes
 
             this.notifications.showSuccess(`Task "${task.name}" approved and added to your list!`);
             Logger.log(`Approved pending task: ${pendingTaskId} -> ${task.id}`);
@@ -705,7 +703,7 @@ Main activities, decisions, and tasks. Be direct and concise.`;
             
             // Remove from pending tasks
             this.appState.pendingTasks.splice(pendingTaskIndex, 1);
-            StorageManager.savePendingTasks(this.appState.pendingTasks);
+            // Note: Pending tasks are now saved automatically through app state changes
 
             this.notifications.showSuccess(`Task "${pendingTask.title}" rejected and removed.`);
             Logger.log(`Rejected pending task: ${pendingTaskId}`);

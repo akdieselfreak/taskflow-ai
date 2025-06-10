@@ -1,7 +1,6 @@
 // ui/modals.js - Enhanced Modal Management with Tabbed Settings
 
 import { Logger, DEFAULT_NOTES_TITLE_PROMPT, DEFAULT_NOTES_SUMMARY_PROMPT, DEFAULT_NOTES_TASK_EXTRACTION_PROMPT } from '../core/config.js';
-import { StorageManager } from '../core/storage.js';
 
 export class ModalManager {
     constructor(appState, dependencies) {
@@ -41,6 +40,9 @@ export class ModalManager {
                 case 'settings':
                     this.openSettingsModal();
                     break;
+                case 'aiReconfig':
+                    this.openAIReconfigModal();
+                    break;
                 case 'pendingTasks':
                     this.openPendingTasksModal();
                     break;
@@ -59,7 +61,8 @@ export class ModalManager {
                 'quick': 'quickModalOverlay',
                 'ai': 'aiModalOverlay',
                 'edit': 'editModalOverlay',
-                'settings': 'settingsModalOverlay'
+                'settings': 'settingsModalOverlay',
+                'aiReconfig': 'aiReconfigModalOverlay'
             };
             
             const modalId = modalMap[type];
@@ -201,6 +204,103 @@ export class ModalManager {
         }
     }
 
+    openAIReconfigModal() {
+        const overlay = document.getElementById('aiReconfigModalOverlay');
+        const content = document.getElementById('aiReconfigContent');
+        
+        if (!overlay || !content) {
+            this.notifications.showError('AI reconfiguration modal not found');
+            return;
+        }
+
+        // Generate the AI reconfiguration content
+        content.innerHTML = this.generateAIReconfigContent();
+        
+        overlay.classList.add('active');
+        overlay.style.display = 'flex';
+        
+        Logger.log('AI reconfiguration modal opened');
+    }
+
+    generateAIReconfigContent() {
+        const currentConfig = this.appState.onboardingData;
+        
+        return `
+            <div class="ai-reconfig-steps">
+                <!-- Step 1: Service Selection -->
+                <div class="reconfig-step active" id="reconfigStep1">
+                    <h3>Choose AI Service</h3>
+                    <p class="step-description">Select which AI service you'd like to use</p>
+                    
+                    <div class="service-options">
+                        <button class="service-option ${currentConfig.service === 'ollama' ? 'selected' : ''}" 
+                                onclick="selectReconfigService('ollama')">
+                            <div class="service-icon">🦙</div>
+                            <h4>Ollama</h4>
+                            <p>Local or self-hosted AI models</p>
+                        </button>
+                        <button class="service-option ${currentConfig.service === 'openai' ? 'selected' : ''}" 
+                                onclick="selectReconfigService('openai')">
+                            <div class="service-icon">🤖</div>
+                            <h4>OpenAI</h4>
+                            <p>GPT models via API</p>
+                        </button>
+                        <button class="service-option ${currentConfig.service === 'openwebui' ? 'selected' : ''}" 
+                                onclick="selectReconfigService('openwebui')">
+                            <div class="service-icon">🌐</div>
+                            <h4>Open WebUI</h4>
+                            <p>Unified interface for multiple AI models</p>
+                        </button>
+                    </div>
+                    
+                    <div class="reconfig-actions">
+                        <button class="btn btn-secondary" onclick="closeModal('aiReconfig')">Cancel</button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Service Configuration -->
+                <div class="reconfig-step" id="reconfigStep2" style="display: none;">
+                    <div id="reconfigServiceContent">
+                        <!-- Service-specific configuration will be inserted here -->
+                    </div>
+                </div>
+
+                <!-- Step 3: Model Selection -->
+                <div class="reconfig-step" id="reconfigStep3" style="display: none;">
+                    <div id="reconfigModelContent">
+                        <!-- Model selection will be inserted here -->
+                    </div>
+                </div>
+
+                <!-- Step 4: Test & Save -->
+                <div class="reconfig-step" id="reconfigStep4" style="display: none;">
+                    <h3>Test & Save Configuration</h3>
+                    <p class="step-description">Let's test your new configuration</p>
+                    
+                    <div class="test-status" id="reconfigTestStatus">
+                        <div class="test-item" id="reconfigTestConnection">
+                            <span class="test-icon">⏳</span>
+                            <span>Testing connection...</span>
+                        </div>
+                        <div class="test-item" id="reconfigTestModel">
+                            <span class="test-icon">⏳</span>
+                            <span>Verifying model...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="reconfig-actions" id="reconfigFinalActions" style="display: none;">
+                        <button class="btn btn-primary" onclick="saveAIReconfiguration()">
+                            Save Configuration
+                        </button>
+                        <button class="btn btn-secondary" onclick="closeModal('aiReconfig')">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     populateSettingsModal() {
         const content = document.getElementById('settingsContent');
         if (!content) return;
@@ -258,7 +358,58 @@ export class ModalManager {
     }
 
     generateGeneralTabContent(onboardingData, nameVariations) {
+        // Check if user is authenticated using centralized auth manager
+        const authManager = window.authManager || (window.taskFlowApp?.authManager);
+        const isAuthenticated = authManager?.isAuthenticated?.() || false;
+        const currentUser = authManager?.getCurrentUser?.();
+        
         return `
+            <div class="tab-section">
+                <h3>Account Information</h3>
+                ${isAuthenticated ? `
+                    <div class="account-status authenticated">
+                        <div class="account-info">
+                            <span class="account-icon">✅</span>
+                            <div class="account-details">
+                                <strong>Signed in as: ${currentUser?.username || 'Unknown'}</strong>
+                                <p>Your data is synced across devices</p>
+                            </div>
+                        </div>
+                        <div class="account-actions">
+                            <button class="btn btn-secondary" onclick="taskFlowApp?.authUI?.showAuthModal?.()">
+                                Switch Account
+                            </button>
+                            <button class="btn btn-danger" onclick="authManager?.logout?.()">
+                                Sign Out
+                            </button>
+                        </div>
+                    </div>
+                ` : `
+                    <div class="account-status guest">
+                        <div class="account-info">
+                            <span class="account-icon">👤</span>
+                            <div class="account-details">
+                                <strong>Guest Mode</strong>
+                                <p>Data is stored locally only</p>
+                            </div>
+                        </div>
+                        <div class="account-actions">
+                            <button class="btn btn-primary" onclick="taskFlowApp?.authUI?.showAuthModal?.()">
+                                Sign In / Create Account
+                            </button>
+                        </div>
+                        <div class="guest-benefits">
+                            <p><strong>Benefits of creating an account:</strong></p>
+                            <ul>
+                                <li>✅ Access your tasks from any device</li>
+                                <li>✅ Automatic data backup</li>
+                                <li>✅ Never lose your data</li>
+                            </ul>
+                        </div>
+                    </div>
+                `}
+            </div>
+
             <div class="tab-section">
                 <h3>Personal Information</h3>
                 <div class="setting-item">
@@ -306,13 +457,26 @@ export class ModalManager {
                         <span class="config-label">Endpoint:</span>
                         <span class="config-value endpoint">${onboardingData.endpoint || 'Not configured'}</span>
                     </div>
+                    ${onboardingData.apiKey ? `
+                    <div class="config-item">
+                        <span class="config-label">API Key:</span>
+                        <span class="config-value">••••••••${onboardingData.apiKey.slice(-4)}</span>
+                    </div>
+                    ` : ''}
                 </div>
                 
                 <div class="setting-item">
-                    <button class="btn btn-danger" onclick="resetAIConfigOnly()">
+                    <button class="btn btn-primary" onclick="taskFlowApp?.openAIReconfigModal?.()">
                         🔄 Reconfigure AI Service
                     </button>
-                    <p class="setting-description">This will reset your AI configuration but keep your tasks and notes</p>
+                    <p class="setting-description">Change your AI service, model, or connection settings</p>
+                </div>
+                
+                <div class="setting-item">
+                    <button class="btn btn-secondary" onclick="taskFlowApp?.testAIConnection?.()">
+                        🧪 Test Current Configuration
+                    </button>
+                    <p class="setting-description">Verify that your AI service is working correctly</p>
                 </div>
             </div>
         `;
@@ -492,7 +656,7 @@ export class ModalManager {
             const newName = document.getElementById('settingsUserName')?.value?.trim();
             if (newName && newName !== this.appState.onboardingData.userName && newName.length >= 2) {
                 this.appState.updateOnboardingField('userName', newName);
-                StorageManager.updateUserName(newName);
+                // Note: User name is now saved automatically through app state changes
                 
                 const greetingElement = document.getElementById('userGreeting');
                 if (greetingElement) {
@@ -504,7 +668,7 @@ export class ModalManager {
                 if (variations && variations.length === 1) {
                     const newVariations = [newName];
                     this.appState.updateOnboardingField('nameVariations', newVariations);
-                    StorageManager.saveNameVariations(newVariations);
+                    // Note: Name variations are now saved automatically through app state changes
                 }
                 
                 Logger.log('User name updated', { newName });
@@ -715,12 +879,9 @@ export class ModalManager {
                 }
             }
             
-            const success = StorageManager.saveSystemPrompt(prompt);
-            if (success) {
-                this.notifications.showSuccess('System prompt saved successfully!');
-            } else {
-                this.notifications.showError('Failed to save system prompt. Please try again.');
-            }
+            // Note: System prompts are now saved automatically through app state changes
+            this.appState.updateOnboardingField('systemPrompt', prompt);
+            this.notifications.showSuccess('System prompt saved successfully!');
         };
 
         app.resetToDefaultPrompt = () => {
@@ -740,19 +901,12 @@ export class ModalManager {
                 return;
             }
             
-            let success = false;
             switch (type) {
                 case 'title':
-                    success = StorageManager.saveNotesTitlePrompt(prompt);
-                    if (success) {
-                        this.appState.updateOnboardingField('notesTitlePrompt', prompt);
-                    }
+                    this.appState.updateOnboardingField('notesTitlePrompt', prompt);
                     break;
                 case 'summary':
-                    success = StorageManager.saveNotesSummaryPrompt(prompt);
-                    if (success) {
-                        this.appState.updateOnboardingField('notesSummaryPrompt', prompt);
-                    }
+                    this.appState.updateOnboardingField('notesSummaryPrompt', prompt);
                     break;
                 case 'taskExtraction':
                     if (!prompt.toLowerCase().includes('json')) {
@@ -760,18 +914,12 @@ export class ModalManager {
                             return;
                         }
                     }
-                    success = StorageManager.saveNotesTaskExtractionPrompt(prompt);
-                    if (success) {
-                        this.appState.updateOnboardingField('notesTaskExtractionPrompt', prompt);
-                    }
+                    this.appState.updateOnboardingField('notesTaskExtractionPrompt', prompt);
                     break;
             }
             
-            if (success) {
-                this.notifications.showSuccess(`Notes ${type} prompt saved successfully!`);
-            } else {
-                this.notifications.showError(`Failed to save notes ${type} prompt. Please try again.`);
-            }
+            // Note: Notes prompts are now saved automatically through app state changes
+            this.notifications.showSuccess(`Notes ${type} prompt saved successfully!`);
         };
 
         app.resetNotesPrompt = (type) => {

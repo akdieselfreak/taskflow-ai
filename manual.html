@@ -18,6 +18,7 @@
 
         <nav>
             <a href="#getting-started">Getting Started</a>
+            <a href="#authentication">Authentication</a>
             <a href="#features">Features</a>
             <a href="#task-management">Task Management</a>
             <a href="#ai-extraction">AI Extraction</a>
@@ -30,7 +31,7 @@
 
         <section class="manual-section" id="welcome">
             <h2>Welcome to TaskFlow AI</h2>
-            <p>TaskFlow AI is an intelligent task management system that combines the simplicity of traditional to-do lists with the power of artificial intelligence. Whether you're managing daily tasks or extracting multiple action items from emails and messages, TaskFlow AI helps you stay organized and productive.</p>
+            <p>TaskFlow AI is an intelligent task management system that combines the simplicity of traditional to-do lists with the power of artificial intelligence. With secure multi-user authentication, cloud data synchronization, and advanced AI-powered task extraction, TaskFlow AI helps you stay organized and productive across all your devices.</p>
             
             <div class="feature-grid">
                 <div class="feature-box">
@@ -44,9 +45,9 @@
                     <p>Clean interface keeps you focused on what matters today</p>
                 </div>
                 <div class="feature-box">
-                    <div class="feature-icon">🔒</div>
-                    <h3>Privacy First</h3>
-                    <p>All data stored locally in your browser</p>
+                    <div class="feature-icon">🔐</div>
+                    <h3>Secure & Synced</h3>
+                    <p>Multi-user authentication with secure cloud storage and device synchronization</p>
                 </div>
             </div>
         </section>
@@ -54,10 +55,25 @@
         <section class="manual-section" id="getting-started">
             <h2>Getting Started</h2>
             
-            <h3>Initial Setup</h3>
-            <p>When you first open TaskFlow AI, you'll go through a simple onboarding process:</p>
+            <h3>Account Creation & Authentication</h3>
+            <p>TaskFlow AI requires an account to securely store your data and sync across devices. When you first open TaskFlow AI, you'll go through a comprehensive onboarding process:</p>
             
             <ol>
+                <li><strong>Account Setup</strong> - Choose between:
+                    <ul>
+                        <li><strong>Sign In</strong> - Access your existing account and data</li>
+                        <li><strong>Create Account</strong> - Set up a new account with secure cloud storage</li>
+                    </ul>
+                </li>
+                <li><strong>Account Creation</strong> (if creating new account):
+                    <ul>
+                        <li>Choose a unique username</li>
+                        <li>Provide email address (optional, for account recovery)</li>
+                        <li>Create a secure password (minimum 6 characters)</li>
+                        <li>Confirm your password</li>
+                    </ul>
+                </li>
+                <li><strong>Automatic Login</strong> - After account creation, you're automatically logged in</li>
                 <li><strong>Enter Your Name</strong> - This personalizes your experience and helps AI identify tasks assigned to you</li>
                 <li><strong>Choose Your AI Service</strong> - Select between:
                     <ul>
@@ -66,14 +82,77 @@
                         <li><strong>Open WebUI</strong> - For unified interface with multiple AI models</li>
                     </ul>
                 </li>
-                <li><strong>Configure Your Service</strong> - Enter connection details</li>
-                <li><strong>Select a Model</strong> - Choose which AI model to use</li>
-                <li><strong>Test Connection</strong> - Verify everything is working</li>
+                <li><strong>Configure Your Service</strong> - Enter connection details (API keys, server URLs)</li>
+                <li><strong>Select a Model</strong> - Choose which AI model to use from available options</li>
+                <li><strong>Test Connection</strong> - Verify everything is working correctly</li>
                 <li><strong>Smart Name Recognition Setup</strong> - AI automatically discovers name variations and nicknames for better task detection</li>
             </ol>
 
             <div class="tip">
+                <strong>🔐 Security Note:</strong> Your account uses secure JWT authentication with encrypted password storage. All your tasks, notes, and settings are stored securely in the cloud and synchronized across all your devices.
+            </div>
+
+            <div class="tip">
                 <strong>💡 Tip:</strong> During setup, TaskFlow AI will automatically discover common nicknames and variations of your name (like "Bob" for "Robert"). This helps the AI recognize tasks assigned to you even when people use different names in emails and messages.
+            </div>
+
+            <h3>Multi-Device Access</h3>
+            <p>Once you have an account, you can access TaskFlow AI from any device:</p>
+            <ul>
+                <li><strong>Automatic Sync</strong> - All data syncs automatically across devices</li>
+                <li><strong>Session Management</strong> - Stay logged in for 30 days on trusted devices</li>
+                <li><strong>Secure Access</strong> - Each device requires proper authentication</li>
+                <li><strong>Data Isolation</strong> - Your data is completely separate from other users</li>
+            </ul>
+        </section>
+
+        <section class="manual-section" id="authentication">
+            <h2>🔐 Authentication & Security</h2>
+            
+            <h3>Account Management</h3>
+            <p>TaskFlow AI uses a secure authentication system to protect your data and enable multi-device synchronization:</p>
+            
+            <h4>Creating an Account</h4>
+            <ul>
+                <li><strong>Username</strong> - Choose a unique username (required)</li>
+                <li><strong>Email</strong> - Optional, used for account recovery</li>
+                <li><strong>Password</strong> - Minimum 6 characters, securely hashed with bcryptjs</li>
+                <li><strong>Automatic Login</strong> - You're logged in immediately after account creation</li>
+            </ul>
+
+            <h4>Signing In</h4>
+            <ul>
+                <li><strong>Username or Email</strong> - Use either your username or email address</li>
+                <li><strong>Password</strong> - Your secure password</li>
+                <li><strong>Session Duration</strong> - Stay logged in for 30 days on trusted devices</li>
+                <li><strong>Multi-Device</strong> - Access from any device with your credentials</li>
+            </ul>
+
+            <h4>Security Features</h4>
+            <ul>
+                <li><strong>JWT Tokens</strong> - Secure token-based authentication</li>
+                <li><strong>Password Hashing</strong> - Passwords are never stored in plain text</li>
+                <li><strong>Session Management</strong> - Automatic token refresh and expiration</li>
+                <li><strong>Data Isolation</strong> - Complete separation between user accounts</li>
+                <li><strong>Rate Limiting</strong> - Protection against brute force attacks</li>
+            </ul>
+
+            <h4>Account Settings</h4>
+            <p>Access account settings through the Settings menu (⚙️ button):</p>
+            <ul>
+                <li><strong>View Profile</strong> - See your username and account information</li>
+                <li><strong>Logout</strong> - Sign out from the current device</li>
+                <li><strong>Data Export</strong> - Download your complete data for backup</li>
+            </ul>
+
+            <div class="warning">
+                <h4>⚠️ Important Security Notes</h4>
+                <ul>
+                    <li><strong>Password Recovery</strong> - Currently not available; keep your password secure</li>
+                    <li><strong>Account Deletion</strong> - Contact support for account deletion requests</li>
+                    <li><strong>Data Backup</strong> - Regularly export your data as backup</li>
+                    <li><strong>Secure Passwords</strong> - Use strong, unique passwords</li>
+                </ul>
             </div>
         </section>
 
@@ -102,12 +181,12 @@
                     </ul>
                 </div>
                 <div class="feature-box">
-                    <h4>🌐 Open WebUI</h4>
-                    <p>Connect to your Open WebUI instance with:</p>
+                    <h4>📝 Notes System</h4>
+                    <p>Create notes with automatic:</p>
                     <ul>
-                        <li>Server URL</li>
-                        <li>API key</li>
-                        <li>Auto-detected models</li>
+                        <li>AI summaries</li>
+                        <li>Task extraction</li>
+                        <li>Tag organization</li>
                     </ul>
                 </div>
             </div>
@@ -128,6 +207,15 @@
                 <li><kbd>Ctrl+E</kbd> or <kbd>Cmd+E</kbd> - Open AI Extract Task modal</li>
                 <li><kbd>Ctrl+,</kbd> or <kbd>Cmd+,</kbd> - Open Settings</li>
                 <li><kbd>Esc</kbd> - Close any open modal</li>
+            </ul>
+
+            <h3>Data Synchronization</h3>
+            <p>With your account, all data automatically syncs:</p>
+            <ul>
+                <li><strong>Real-time Sync</strong> - Changes save automatically every 30 seconds</li>
+                <li><strong>Cross-Device</strong> - Access from any device with your account</li>
+                <li><strong>Offline Support</strong> - Works offline, syncs when reconnected</li>
+                <li><strong>Conflict Resolution</strong> - Intelligent handling of simultaneous edits</li>
             </ul>
         </section>
 
@@ -172,7 +260,7 @@
             </ul>
 
             <div class="note">
-                <strong>📝 Note:</strong> Task counts appear on the buttons, giving you a quick overview without cluttering the interface.
+                <strong>📝 Note:</strong> Task counts appear on the buttons, giving you a quick overview without cluttering the interface. All changes are automatically saved to your account and synced across devices.
             </div>
         </section>
 
@@ -254,8 +342,8 @@
             
             <h3>Creating Notes</h3>
             <ol>
-                <li>Click the <strong>📝 Notes</strong> button in the main interface</li>
-                <li>Click <strong>+ Create Note</strong> to open the note editor</li>
+                <li>Click the <strong>📝 Notes</strong> tab in the main interface</li>
+                <li>Click <strong>+ New Note</strong> to open the note editor</li>
                 <li>Add a title (optional - will auto-generate from content)</li>
                 <li>Enter your note content</li>
                 <li>Add tags for organization (comma-separated)</li>
@@ -414,7 +502,7 @@
             </ul>
 
             <div class="note">
-                <strong>📝 Note:</strong> All note content is processed by your configured AI service. The same AI settings used for task extraction apply to note processing.
+                <strong>📝 Note:</strong> All note content is processed by your configured AI service. The same AI settings used for task extraction apply to note processing. All notes are stored securely in your account and synced across devices.
             </div>
         </section>
 
@@ -541,395 +629,236 @@
 
             <h4>Device Migration</h4>
             <ul>
-                <li><strong>Full Backup</strong> - Export JSON on old device, import on new device</li>
-                <li><strong>Cloud Sync</strong> - Save export file to cloud storage, download on new device</li>
-                <li><strong>Email Transfer</strong> - Email backup file to yourself for easy transfer</li>
+                <li><strong>Account Sync</strong> - Simply log in to your account on the new device</li>
+                <li><strong>Manual Backup</strong> - Export JSON on old device, import on new device if needed</li>
+                <li><strong>Cloud Storage</strong> - All data automatically syncs via your account</li>
             </ul>
-
-            <h3>⚠️ Import Considerations</h3>
-            <div class="warning">
-                <h4>Before Importing</h4>
-                <ul>
-                    <li><strong>Backup First</strong> - Always export your current tasks before importing</li>
-                    <li><strong>Check Format</strong> - Ensure your file is in a supported format</li>
-                    <li><strong>Review Content</strong> - Large imports may take time to process</li>
-                    <li><strong>Name Matching</strong> - Duplicate detection is based on task names</li>
-                </ul>
-            </div>
-
-            <h3>📋 Export/Import Best Practices</h3>
-            <ul>
-                <li><strong>Regular Backups</strong> - Export JSON weekly for complete data protection</li>
-                <li><strong>Cross-Platform Sharing</strong> - Use Markdown for sharing with non-TaskFlow users</li>
-                <li><strong>Data Analysis</strong> - Export CSV to analyze productivity patterns in Excel</li>
-                <li><strong>Obsidian Integration</strong> - Use Obsidian format to integrate with your knowledge vault</li>
-                <li><strong>Incremental Imports</strong> - Import new tasks regularly instead of large batches</li>
-                <li><strong>File Naming</strong> - Use descriptive names like "TaskFlow-Backup-2024-01-15.json"</li>
-            </ul>
-
-            <div class="note">
-                <strong>🔒 Privacy Note:</strong> All export/import operations happen locally in your browser. No data is sent to external servers except for AI processing when explicitly requested.
-            </div>
         </section>
 
         <section class="manual-section" id="settings">
-            <h2>Settings & Customization</h2>
+            <h2>⚙️ Settings & Configuration</h2>
             
-            <p>Access settings by clicking the <strong>⚙️</strong> button in the top-right corner of the main interface.</p>
+            <p>Access settings by clicking the ⚙️ button in the top-right corner. Settings are organized into tabs for easy navigation.</p>
             
-            <h3>Available Settings</h3>
-            
-            <div class="feature-grid">
-                <div class="feature-box">
-                    <h4>👤 Your Name</h4>
-                    <p>Update your name to change how AI identifies your tasks</p>
-                </div>
-                <div class="feature-box">
-                    <h4>🏷️ Name Variations</h4>
-                    <p>Manage nicknames and alternative names for better task recognition</p>
-                </div>
-                <div class="feature-box">
-                    <h4>🤖 AI Configuration</h4>
-                    <p>View current AI service and model (click "Reconfigure AI" to change)</p>
-                </div>
-                <div class="feature-box">
-                    <h4>📝 System Prompt</h4>
-                    <p>Customize AI task extraction behavior for multiple tasks</p>
-                </div>
-            </div>
-
-            <h3>Name Variations Management</h3>
-            <p>One of TaskFlow AI's most powerful features is its ability to recognize you by different names and nicknames:</p>
-            
+            <h3>AI Configuration</h3>
+            <p>Manage your AI service settings and test connections:</p>
             <ul>
-                <li><strong>Automatic Discovery</strong> - During setup, AI automatically finds common variations of your name</li>
-                <li><strong>Manual Customization</strong> - Add, remove, or modify name variations in Settings</li>
-                <li><strong>AI Suggestions</strong> - Get AI-powered suggestions for additional name variations</li>
-                <li><strong>Smart Recognition</strong> - AI uses all variations when identifying tasks assigned to you</li>
+                <li><strong>Current Service</strong> - View your configured AI service and model</li>
+                <li><strong>Test Connection</strong> - Verify your AI service is working properly</li>
+                <li><strong>Reconfigure AI</strong> - Change AI service, model, or connection details</li>
+                <li><strong>Name Variations</strong> - Update how AI recognizes your name in text</li>
             </ul>
 
-            <div class="tip">
-                <strong>💡 Examples:</strong> If your name is "Robert", TaskFlow AI might recognize tasks assigned to "Bob", "Rob", "Bobby", or "Robbie". This works for any name - "Jennifer" becomes "Jen", "Jenny", "Jenn", etc.
-            </div>
-
-            <h3>System Prompt Customization</h3>
-            <p>The system prompt controls how AI interprets and extracts tasks from your text. This powerful feature allows you to:</p>
-            
+            <h3>Account Management</h3>
+            <p>Manage your account and authentication:</p>
             <ul>
-                <li><strong>Fine-tune extraction</strong> - Add specific instructions for your workflow</li>
-                <li><strong>Multiple task handling</strong> - Control how AI separates and identifies multiple tasks</li>
-                <li><strong>Industry-specific rules</strong> - Tailor for legal, medical, or technical contexts</li>
-                <li><strong>Priority detection</strong> - Identify urgent vs. normal tasks automatically</li>
-                <li><strong>Custom fields</strong> - Extract additional information like deadlines or project codes</li>
+                <li><strong>Profile Information</strong> - View your username and account details</li>
+                <li><strong>Session Status</strong> - See login status and session information</li>
+                <li><strong>Logout</strong> - Sign out from the current device</li>
+                <li><strong>Security</strong> - Account security and session management</li>
+            </ul>
+
+            <h3>Data Management</h3>
+            <p>Export and import your data:</p>
+            <ul>
+                <li><strong>Export Options</strong> - Download your data in various formats</li>
+                <li><strong>Import Data</strong> - Upload and import tasks from other sources</li>
+                <li><strong>Backup & Restore</strong> - Complete data backup and restoration</li>
+                <li><strong>Migration Tools</strong> - Move data between devices or accounts</li>
+            </ul>
+
+            <h3>Application Settings</h3>
+            <p>Customize your TaskFlow AI experience:</p>
+            <ul>
+                <li><strong>Auto-Save</strong> - Automatic data saving (every 30 seconds)</li>
+                <li><strong>Keyboard Shortcuts</strong> - Enable/disable keyboard navigation</li>
+                <li><strong>Performance</strong> - View performance metrics and optimization</li>
+                <li><strong>Reset Options</strong> - Reset configuration or all data</li>
             </ul>
 
             <div class="warning">
-                <h4>⚠️ Important: System Prompt Format</h4>
-                <p>Your custom prompt must instruct the AI to return valid JSON with these required fields:</p>
-                <p><strong>For single task:</strong></p>
+                <h4>⚠️ Reset Options</h4>
                 <ul>
-                    <li><code>title</code> - Task title (string)</li>
-                    <li><code>description</code> - Brief summary (string)</li>
-                    <li><code>notes</code> - Additional details (string)</li>
+                    <li><strong>Reset AI Configuration</strong> - Clears AI settings but keeps tasks and notes</li>
+                    <li><strong>Reset All Data</strong> - Completely clears all data and settings (irreversible)</li>
+                    <li><strong>Backup First</strong> - Always export your data before resetting</li>
                 </ul>
-                <p><strong>For multiple tasks:</strong></p>
-                <ul>
-                    <li><code>tasks</code> - Array of task objects, each with title, description, and notes</li>
-                </ul>
-            </div>
-
-            <h3>Example Custom Prompts</h3>
-            
-            <div class="tip">
-                <strong>For Project Managers:</strong><br>
-                <code>"Extract all tasks and identify project codes. Always include deadlines in the notes field. Prioritize tasks marked as 'urgent' or 'ASAP'. Return JSON with single task format or tasks array for multiple tasks."</code>
-            </div>
-
-            <div class="tip">
-                <strong>For Customer Support:</strong><br>
-                <code>"Extract all support tickets and customer requests. Include ticket numbers and customer names in notes. Flag escalations. Return JSON with single task format or tasks array for multiple items."</code>
             </div>
         </section>
 
         <section class="manual-section" id="tips">
-            <h2>Tips & Tricks</h2>
+            <h2>💡 Tips & Best Practices</h2>
             
             <h3>Productivity Tips</h3>
             <ul>
-                <li><strong>Start Fresh Daily</strong> - Complete or postpone yesterday's tasks each morning</li>
-                <li><strong>Use AI for Meetings</strong> - Paste meeting notes to extract all your action items</li>
-                <li><strong>Batch Process Emails</strong> - Extract multiple tasks from complex email threads at once</li>
-                <li><strong>Review Extracted Tasks</strong> - Always check AI results and remove duplicates or irrelevant items</li>
-                <li><strong>Keep Descriptions Brief</strong> - Use the notes field for detailed information</li>
-                <li><strong>Use Keyboard Shortcuts</strong> - Speed up task creation with Ctrl+Q and Ctrl+E</li>
+                <li><strong>Start with Quick Tasks</strong> - Use Quick Task for immediate items, AI Extract for complex text</li>
+                <li><strong>Use Keyboard Shortcuts</strong> - <kbd>Ctrl+Q</kbd> for Quick Task, <kbd>Ctrl+E</kbd> for AI Extract</li>
+                <li><strong>Regular Reviews</strong> - Check completed and postponed tasks weekly</li>
+                <li><strong>Batch Processing</strong> - Process multiple emails or messages at once with AI Extract</li>
+                <li><strong>Tag Organization</strong> - Use consistent tags in notes for easy filtering</li>
             </ul>
 
-            <h3>Multiple Tasks Tips</h3>
+            <h3>AI Optimization</h3>
             <ul>
-                <li><strong>Paste Entire Conversations</strong> - AI works better with full context for task separation</li>
-                <li><strong>Remove Unwanted Tasks</strong> - Use the × button to delete tasks you don't need</li>
-                <li><strong>Edit Individual Tasks</strong> - Customize each extracted task before saving</li>
-                <li><strong>Check for Duplicates</strong> - AI may sometimes create similar tasks from the same text</li>
-                <li><strong>Save All at Once</strong> - The "Save All Tasks" button adds everything to your list efficiently</li>
+                <li><strong>Provide Context</strong> - Include full email threads for better task separation</li>
+                <li><strong>Name Variations</strong> - Ensure AI knows all your nicknames and variations</li>
+                <li><strong>Review Extractions</strong> - Always check AI-extracted tasks before saving</li>
+                <li><strong>Use Notes System</strong> - Let AI automatically extract tasks from meeting notes</li>
+                <li><strong>Test Connections</strong> - Regularly test AI service connections in settings</li>
             </ul>
 
-            <h3>Data Management Tips</h3>
+            <h3>Data Management</h3>
             <ul>
-                <li><strong>Regular Backups</strong> - Export JSON files weekly to protect your data</li>
-                <li><strong>Use Descriptive Filenames</strong> - Name exports like "TaskFlow-Backup-2024-01-15.json"</li>
-                <li><strong>Cross-Platform Compatibility</strong> - Export Markdown to share with non-TaskFlow users</li>
-                <li><strong>Cloud Storage Integration</strong> - Save export files to Dropbox/Google Drive for device sync</li>
-                <li><strong>Import Testing</strong> - Try importing with a small file first to test compatibility</li>
-                <li><strong>Obsidian Integration</strong> - Use Obsidian export format to integrate with your knowledge management</li>
+                <li><strong>Regular Backups</strong> - Export your data monthly as JSON backup</li>
+                <li><strong>Cross-Device Sync</strong> - Use your account to sync across all devices</li>
+                <li><strong>Import Wisely</strong> - Review import previews before confirming</li>
+                <li><strong>Clean Organization</strong> - Regularly complete or postpone old tasks</li>
+                <li><strong>Export for Sharing</strong> - Use Markdown or CSV for sharing with others</li>
             </ul>
 
-            <h3>Interface Tips</h3>
+            <h3>Security Best Practices</h3>
             <ul>
-                <li><strong>Minimize Clutter</strong> - Completed and postponed sections auto-hide</li>
-                <li><strong>Quick Actions</strong> - Use checkboxes for fast task completion</li>
-                <li><strong>Settings Access</strong> - Click ⚙️ in the top-right to adjust configuration</li>
-                <li><strong>Auto-Save</strong> - Tasks are automatically saved every 30 seconds</li>
-                <li><strong>Smart Notifications</strong> - Success and error messages keep you informed</li>
-            </ul>
-
-            <h3>Advanced Features</h3>
-            <ul>
-                <li><strong>Task Metadata</strong> - View creation and modification times in task details</li>
-                <li><strong>Smart Display</strong> - Recent tasks appear first, with intelligent date formatting</li>
-                <li><strong>Error Recovery</strong> - Automatic retries and graceful error handling</li>
-                <li><strong>Data Safety</strong> - Configuration validation prevents corruption</li>
+                <li><strong>Strong Passwords</strong> - Use unique, secure passwords for your account</li>
+                <li><strong>Regular Logout</strong> - Log out from shared or public devices</li>
+                <li><strong>Data Backup</strong> - Keep regular backups of your important data</li>
+                <li><strong>Monitor Sessions</strong> - Check account settings for active sessions</li>
+                <li><strong>Local AI</strong> - Use Ollama for complete privacy if needed</li>
             </ul>
         </section>
 
         <section class="manual-section" id="troubleshooting">
-            <h2>Troubleshooting</h2>
+            <h2>🔧 Troubleshooting</h2>
             
-            <h3>Common Issues</h3>
+            <h3>Authentication Issues</h3>
             
-            <div class="warning">
-                <h4>AI Connection Failed</h4>
-                <ul>
-                    <li>Verify your API endpoint is correct</li>
-                    <li>Check that your API key is valid (OpenAI)</li>
-                    <li>Ensure Ollama is running (if using Ollama)</li>
-                    <li>Try the connection test in Settings → "Reconfigure AI"</li>
-                    <li>Check your internet connection</li>
-                </ul>
-            </div>
-
-            <div class="warning">
-                <h4>Tasks Not Saving</h4>
-                <ul>
-                    <li>Check browser's local storage isn't full</li>
-                    <li>Ensure cookies/storage are enabled</li>
-                    <li>Try refreshing the page</li>
-                    <li>Clear browser cache and restart</li>
-                </ul>
-            </div>
-
-            <div class="warning">
-                <h4>AI Extraction Fails or No Multiple Tasks Found</h4>
-                <ul>
-                    <li>Ensure your text contains actionable content with multiple distinct items</li>
-                    <li>Try with more detailed or longer text for better context</li>
-                    <li>Check your system prompt in Settings (ensure it supports multiple tasks)</li>
-                    <li>Verify your AI service is responding</li>
-                    <li>Try pasting entire email threads instead of snippets</li>
-                </ul>
-            </div>
-
-            <div class="warning">
-                <h4>Import/Export Issues</h4>
-                <ul>
-                    <li><strong>Export Download Fails</strong> - Check browser download settings and popup blockers</li>
-                    <li><strong>Import File Not Recognized</strong> - Verify file format (.json, .md, .csv) and contents</li>
-                    <li><strong>Import Shows Zero Tasks</strong> - Check if file contains proper task format or data</li>
-                    <li><strong>CSV Import Errors</strong> - Ensure CSV has proper headers and is comma-separated</li>
-                    <li><strong>Large File Issues</strong> - Break large imports into smaller chunks</li>
-                </ul>
-            </div>
-
-            <div class="warning">
-                <h4>Name Variations Not Working</h4>
-                <ul>
-                    <li>Check your name variations in Settings are correct and complete</li>
-                    <li>Use "Get AI Suggestions" to find additional name variations</li>
-                    <li>Ensure variations are separated by commas</li>
-                    <li>Try including both formal and informal versions of your name</li>
-                    <li>Remember variations are case-insensitive</li>
-                </ul>
-            </div>
-
-            <h3>Multiple Tasks Issues</h3>
+            <h4>Can't Log In</h4>
             <ul>
-                <li><strong>AI Only Finds One Task</strong> - Try providing more context or explicitly mention multiple action items</li>
-                <li><strong>Duplicate Tasks</strong> - Review extracted tasks and remove duplicates before saving</li>
-                <li><strong>Tasks Missing Context</strong> - Include more surrounding text to help AI understand relationships</li>
-                <li><strong>Wrong Tasks Extracted</strong> - Verify your name is correct in settings so AI identifies your tasks properly</li>
+                <li><strong>Check Credentials</strong> - Verify username/email and password</li>
+                <li><strong>Case Sensitivity</strong> - Usernames and passwords are case-sensitive</li>
+                <li><strong>Network Connection</strong> - Ensure stable internet connection</li>
+                <li><strong>Browser Cache</strong> - Clear browser cache and cookies</li>
+                <li><strong>Server Status</strong> - Check if the server is running and accessible</li>
             </ul>
 
-            <h3>Data Management Issues</h3>
+            <h4>Session Expired</h4>
             <ul>
-                <li><strong>Backup Restore Fails</strong> - Ensure JSON file is from TaskFlow AI and not corrupted</li>
-                <li><strong>Markdown Import Empty</strong> - Check that markdown contains checkbox format tasks (- [ ] or - [x])</li>
-                <li><strong>CSV Format Issues</strong> - Verify headers match expected format (Name, Description, Status, etc.)</li>
-                <li><strong>Obsidian Import Problems</strong> - Ensure file contains proper YAML frontmatter and task format</li>
+                <li><strong>Automatic Logout</strong> - Sessions expire after 30 days of inactivity</li>
+                <li><strong>Re-login Required</strong> - Simply log in again with your credentials</li>
+                <li><strong>Data Preservation</strong> - Your data is safely stored and will reload after login</li>
+            </ul>
+
+            <h3>AI Service Issues</h3>
+            
+            <h4>Connection Failures</h4>
+            <ul>
+                <li><strong>Test Connection</strong> - Use the "Test Connection" button in settings</li>
+                <li><strong>Check API Keys</strong> - Verify OpenAI or Open WebUI API keys are correct</li>
+                <li><strong>Server Status</strong> - Ensure Ollama or Open WebUI servers are running</li>
+                <li><strong>Network Access</strong> - Check firewall and network connectivity</li>
+                <li><strong>Service Limits</strong> - Verify you haven't exceeded API rate limits</li>
+            </ul>
+
+            <h4>Extraction Problems</h4>
+            <ul>
+                <li><strong>No Tasks Found</strong> - AI might not detect tasks in the provided text</li>
+                <li><strong>Poor Quality Results</strong> - Try providing more context or clearer text</li>
+                <li><strong>Timeout Errors</strong> - Large texts may take longer; try smaller chunks</li>
+                <li><strong>Model Issues</strong> - Try switching to a different AI model</li>
+                <li><strong>Name Recognition</strong> - Update name variations in settings</li>
+            </ul>
+
+            <h3>Data Sync Issues</h3>
+            
+            <h4>Data Not Syncing</h4>
+            <ul>
+                <li><strong>Check Login Status</strong> - Ensure you're logged in to your account</li>
+                <li><strong>Network Connection</strong> - Verify stable internet connection</li>
+                <li><strong>Auto-Save Status</strong> - Data saves automatically every 30 seconds</li>
+                <li><strong>Manual Save</strong> - Changes save when you switch tabs or close modals</li>
+                <li><strong>Server Connectivity</strong> - Check if the backend server is accessible</li>
+            </ul>
+
+            <h4>Missing Data</h4>
+            <ul>
+                <li><strong>Wrong Account</strong> - Verify you're logged into the correct account</li>
+                <li><strong>Data Isolation</strong> - Each account has completely separate data</li>
+                <li><strong>Recent Changes</strong> - Check if data was modified on another device</li>
+                <li><strong>Backup Restore</strong> - Restore from a recent backup if available</li>
             </ul>
 
             <h3>Performance Issues</h3>
+            
+            <h4>Slow Loading</h4>
             <ul>
-                <li><strong>Slow Loading</strong> - Clear browser cache or try incognito mode</li>
-                <li><strong>High Memory Usage</strong> - The app limits displayed tasks to prevent issues</li>
-                <li><strong>Unresponsive UI</strong> - Refresh the page to reset the application state</li>
-                <li><strong>Large Export Files</strong> - Consider exporting tasks in smaller date ranges</li>
+                <li><strong>Large Dataset</strong> - Many tasks or notes can slow performance</li>
+                <li><strong>Browser Cache</strong> - Clear browser cache and reload</li>
+                <li><strong>Network Speed</strong> - Check internet connection speed</li>
+                <li><strong>Server Load</strong> - High server load can affect response times</li>
+                <li><strong>Device Resources</strong> - Close other browser tabs or applications</li>
             </ul>
 
-            <h3>Data & Privacy</h3>
+            <h4>Memory Issues</h4>
             <ul>
-                <li>All tasks are stored locally in your browser</li>
-                <li>No data is sent to external servers (except AI queries)</li>
-                <li>API keys are stored securely in browser storage</li>
-                <li>Clear browser data to reset everything</li>
-                <li>Export tasks by copying from the interface</li>
-                <li>Import/export happens locally - no cloud processing</li>
+                <li><strong>Browser Memory</strong> - Restart browser if it becomes sluggish</li>
+                <li><strong>Large Notes</strong> - Very large notes can impact performance</li>
+                <li><strong>Export Data</strong> - Export and clean up old completed tasks</li>
+                <li><strong>Device Storage</strong> - Ensure sufficient device storage space</li>
             </ul>
 
-            <h3>Getting Help</h3>
+            <h3>Import/Export Issues</h3>
+            
+            <h4>Import Failures</h4>
             <ul>
-                <li><strong>Check Browser Console</strong> - Look for error messages in developer tools</li>
-                <li><strong>Try Different Browser</strong> - Test in Chrome, Firefox, or Safari</li>
-                <li><strong>Reset Configuration</strong> - Use "Reconfigure AI" in Settings to start fresh</li>
-                <li><strong>Clear All Data</strong> - Clear browser storage to completely reset the app</li>
-                <li><strong>Test With Sample Data</strong> - Try exporting/importing with a small test file first</li>
+                <li><strong>File Format</strong> - Ensure file is in supported format (JSON, MD, CSV)</li>
+                <li><strong>File Size</strong> - Very large files may fail to import</li>
+                <li><strong>Data Format</strong> - Check that data structure matches expected format</li>
+                <li><strong>Encoding Issues</strong> - Ensure file is UTF-8 encoded</li>
+                <li><strong>Browser Permissions</strong> - Allow file access in browser settings</li>
             </ul>
+
+            <h4>Export Problems</h4>
+            <ul>
+                <li><strong>Download Blocked</strong> - Check browser download permissions</li>
+                <li><strong>File Size Limits</strong> - Large exports may be blocked by browser</li>
+                <li><strong>Format Issues</strong> - Try different export formats if one fails</li>
+                <li><strong>Browser Compatibility</strong> - Some older browsers may have issues</li>
+            </ul>
+
+            <h3>Getting Additional Help</h3>
+            
+            <h4>Self-Help Resources</h4>
+            <ul>
+                <li><strong>Settings → Test Connection</strong> - Diagnose AI service issues</li>
+                <li><strong>Performance Report</strong> - Check browser console for performance data</li>
+                <li><strong>Export Backup</strong> - Always backup data before troubleshooting</li>
+                <li><strong>Browser Console</strong> - Check for error messages in developer tools</li>
+            </ul>
+
+            <h4>When to Seek Support</h4>
+            <ul>
+                <li><strong>Persistent Login Issues</strong> - Account access problems</li>
+                <li><strong>Data Loss</strong> - Missing or corrupted data</li>
+                <li><strong>Server Errors</strong> - Backend connectivity issues</li>
+                <li><strong>Feature Bugs</strong> - Unexpected application behavior</li>
+                <li><strong>Security Concerns</strong> - Account security issues</li>
+            </ul>
+
+            <div class="tip">
+                <strong>💡 Quick Fixes:</strong>
+                <ul>
+                    <li><strong>Refresh Page</strong> - Solves many temporary issues</li>
+                    <li><strong>Clear Cache</strong> - Resolves outdated data problems</li>
+                    <li><strong>Re-login</strong> - Fixes authentication-related issues</li>
+                    <li><strong>Test AI Connection</strong> - Diagnoses AI service problems</li>
+                    <li><strong>Export Backup</strong> - Protects data before major changes</li>
+                </ul>
+            </div>
         </section>
 
-        <section class="manual-section" id="shortcuts">
-            <h2>Quick Reference</h2>
-            
-            <h3>Keyboard Shortcuts</h3>
-            <table>
-                <tr>
-                    <th>Shortcut</th>
-                    <th>Action</th>
-                </tr>
-                <tr>
-                    <td><kbd>Ctrl+Q</kbd> / <kbd>Cmd+Q</kbd></td>
-                    <td>Open Quick Task modal</td>
-                </tr>
-                <tr>
-                    <td><kbd>Ctrl+E</kbd> / <kbd>Cmd+E</kbd></td>
-                    <td>Open AI Extract Task modal</td>
-                </tr>
-                <tr>
-                    <td><kbd>Ctrl+,</kbd> / <kbd>Cmd+,</kbd></td>
-                    <td>Open Settings</td>
-                </tr>
-                <tr>
-                    <td><kbd>Esc</kbd></td>
-                    <td>Close any open modal</td>
-                </tr>
-            </table>
-            
-            <h3>Task Actions by State</h3>
-            <table>
-                <tr>
-                    <th>Task State</th>
-                    <th>Available Actions</th>
-                </tr>
-                <tr>
-                    <td>Active (Today)</td>
-                    <td>Edit, Complete, Postpone</td>
-                </tr>
-                <tr>
-                    <td>Completed</td>
-                    <td>Copy to Today, Delete</td>
-                </tr>
-                <tr>
-                    <td>Postponed</td>
-                    <td>Move to Today, Delete</td>
-                </tr>
-            </table>
-
-            <h3>AI Services Supported</h3>
-            <table>
-                <tr>
-                    <th>Service</th>
-                    <th>Requirements</th>
-                    <th>Features</th>
-                </tr>
-                <tr>
-                    <td>Ollama</td>
-                    <td>Local installation, running server</td>
-                    <td>Auto-detects models, no API key needed, multiple tasks</td>
-                </tr>
-                <tr>
-                    <td>OpenAI</td>
-                    <td>API key, internet connection</td>
-                    <td>GPT models, high accuracy, multiple tasks</td>
-                </tr>
-                <tr>
-                    <td>Open WebUI</td>
-                    <td>Open WebUI instance, API key</td>
-                    <td>Unified access to multiple AI models, OpenAI-compatible, multiple tasks</td>
-                </tr>
-            </table>
-
-            <h3>Export/Import Formats</h3>
-            <table>
-                <tr>
-                    <th>Format</th>
-                    <th>Best For</th>
-                    <th>Features</th>
-                </tr>
-                <tr>
-                    <td>JSON</td>
-                    <td>Complete backup & restore</td>
-                    <td>Full data, settings, metadata</td>
-                </tr>
-                <tr>
-                    <td>Markdown</td>
-                    <td>Human-readable sharing</td>
-                    <td>Checkbox tasks, cross-platform</td>
-                </tr>
-                <tr>
-                    <td>Obsidian</td>
-                    <td>Knowledge management integration</td>
-                    <td>YAML frontmatter, tags, backlinks</td>
-                </tr>
-                <tr>
-                    <td>CSV</td>
-                    <td>Spreadsheet analysis</td>
-                    <td>Structured data, Excel compatible</td>
-                </tr>
-            </table>
-
-            <h3>Multiple Tasks Features</h3>
-            <table>
-                <tr>
-                    <th>Feature</th>
-                    <th>Description</th>
-                </tr>
-                <tr>
-                    <td>Auto-Detection</td>
-                    <td>AI automatically identifies multiple tasks in text</td>
-                </tr>
-                <tr>
-                    <td>Individual Editing</td>
-                    <td>Edit each extracted task independently</td>
-                </tr>
-                <tr>
-                    <td>Task Removal</td>
-                    <td>Remove unwanted tasks before saving</td>
-                </tr>
-                <tr>
-                    <td>Batch Save</td>
-                    <td>Save all tasks at once with one click</td>
-                </tr>
-            </table>
-        </section>
+        <footer>
+            <p>&copy; 2025 TaskFlow AI. All rights reserved.</p>
+            <p>Version 1.0.0 - Complete User Manual</p>
+        </footer>
     </div>
-
-    <a href="index.html" class="back-button">← Back to TaskFlow</a>
 </body>
 </html>

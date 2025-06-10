@@ -1,8 +1,8 @@
 # Use Node.js alpine for a lightweight runtime with database support
 FROM node:18-alpine
 
-# Install system dependencies for better-sqlite3
-RUN apk add --no-cache python3 make g++ sqlite
+# Install system dependencies for SQLite and bcryptjs
+RUN apk add --no-cache python3 make g++ sqlite sqlite-dev
 
 # Set working directory
 WORKDIR /app

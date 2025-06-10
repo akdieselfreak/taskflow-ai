@@ -43,7 +43,6 @@ export class DataManagerUI {
             );
 
         } catch (error) {
-            console.error('Export error:', error);
             this.notifications.showError(`Export failed: ${error.message}`);
         } finally {
             // Reset button
@@ -109,7 +108,6 @@ export class DataManagerUI {
             // Store file for later import
             this.pendingImportFile = file;
             
-            console.log('Import preview generated successfully', previewData);
             
         } catch (error) {
             // Hide preview on error
@@ -316,9 +314,8 @@ export class DataManagerUI {
             
             this.pendingImportFile = null;
             
-            console.log('Import cancelled and UI cleaned up');
         } catch (error) {
-            console.error('Error cancelling import:', error);
+            // Error cancelling import
         }
     }
 
@@ -377,5 +374,4 @@ export function enhanceModalManagerWithDataManagement(modalManager, dataManager)
     // The data tab content is now generated directly in the modal manager
     // We DO NOT modify populateSettingsModal anymore to prevent duplicates
     
-    console.log('Modal manager enhanced with data management capabilities (no content injection)');
 }

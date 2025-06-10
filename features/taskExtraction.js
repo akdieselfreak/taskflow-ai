@@ -1,7 +1,6 @@
 // features/taskExtraction.js - Task Extraction Management
 
 import { Logger, DEFAULT_SYSTEM_PROMPT } from '../core/config.js';
-import { StorageManager } from '../core/storage.js';
 
 export class TaskExtractionManager {
     constructor(appState, aiService, nameVariationsManager) {
@@ -134,12 +133,6 @@ Important:
     }
 
     getSystemPrompt() {
-        const customPrompt = StorageManager.loadConfiguration()?.systemPrompt;
-        if (customPrompt) {
-            // If user has a custom prompt, inject name variations into it dynamically
-            return this.injectNameVariationsIntoPrompt(customPrompt);
-        }
-        
         // Get current name variations from app state (this ensures we always have the latest)
         const nameVariations = this.appState.onboardingData.nameVariations || 
                               [this.appState.onboardingData.userName || 'your boss'];

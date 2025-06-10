@@ -1,8 +1,11 @@
 // main.js - Complete Enhanced Main Application Entry Point
 
 import { CONFIG, Logger } from './core/config.js';
-import { StorageManager } from './core/storage.js';
 import { AppState } from './core/state.js';
+
+// Core Systems
+import { authManager } from './core/authManager.js';
+import { AuthStorageManager } from './core/authStorage.js';
 
 // Services
 import { OllamaService } from './services/ollamaService.js';
@@ -23,12 +26,19 @@ import { NotificationManager } from './ui/notifications.js';
 import { DataManagerUI, enhanceModalManagerWithDataManagement } from './ui/dataManagerUI.js';
 import { NotesRenderer } from './ui/notesRenderer.js';
 import { NotesModalManager } from './ui/notesModals.js';
+import { AuthUI } from './ui/authUI.js';
 
 class TaskFlowApp {
     constructor() {
         this.appState = new AppState();
         this.aiService = null;
         this.notifications = new NotificationManager();
+        
+        // Initialize storage system (database-only, requires authentication)
+        this.authStorage = new AuthStorageManager();
+        
+        // Keep AuthUI for backward compatibility with existing modals
+        this.authUI = new AuthUI();
         
         // Initialize managers
         this.nameVariationsManager = null;
@@ -69,13 +79,80 @@ class TaskFlowApp {
             // Setup error boundary first
             this.setupErrorBoundary();
             
-            // Load configuration
-            const config = StorageManager.loadConfiguration();
+            // Set up authentication state change handler
+            authManager.onAuthStateChange((isLoggedIn, user) => {
+                Logger.log('Auth state changed in main app', { isLoggedIn, user });
+                this.handleAuthStateChange(isLoggedIn, user);
+            });
             
-            if (config && config.hasCompletedOnboarding) {
-                await this.initializeMainApp(config);
-            } else {
+            // Set up logout handler
+            authManager.onLogout(() => {
+                Logger.log('Logout triggered in main app');
+                this.handleLogout();
+            });
+            
+            // Initialize AuthUI for backward compatibility (modals, etc.)
+            await this.authUI.init();
+            
+            // Sync AuthUI with centralized auth manager
+            this.syncAuthUIWithAuthManager();
+            
+            // Listen for server data updates
+            window.addEventListener('dataUpdatedFromServer', (event) => {
+                Logger.log('Data updated from server, refreshing UI', event.detail);
+                
+                // Update app state with server data
+                if (event.detail.tasks) {
+                    this.appState.setTasks(event.detail.tasks);
+                }
+                if (event.detail.notes) {
+                    this.appState.setNotes(event.detail.notes);
+                }
+                
+                // Refresh UI
+                if (this.taskRenderer) {
+                    this.taskRenderer.renderAll();
+                }
+                if (this.notesRenderer) {
+                    this.notesRenderer.refresh();
+                }
+                
+                // Show notification
+                this.notifications.showInfo('Data synchronized from server');
+            });
+            
+            // Wait for auth manager to initialize and verify token
+            await authManager.init();
+            
+            // Give auth manager more time to complete token verification
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Check if user is authenticated after initialization
+            if (!authManager.isAuthenticated()) {
+                Logger.log('User not authenticated after init, showing authentication');
                 this.initializeOnboarding();
+            } else {
+                Logger.log('User is authenticated, loading configuration');
+                // Load configuration and determine app state
+                try {
+                    const config = await this.authStorage.loadConfiguration();
+                    
+                    if (config && (config.hasCompletedOnboarding || this.hasValidAIConfiguration(config))) {
+                        // User has completed onboarding or has valid AI configuration
+                        if (!config.hasCompletedOnboarding) {
+                            config.hasCompletedOnboarding = true;
+                            await this.authStorage.saveConfiguration(config);
+                        }
+                        Logger.log('Loading main app with existing configuration');
+                        await this.initializeMainApp(config);
+                    } else {
+                        Logger.log('No valid configuration found, showing onboarding (authenticated user)');
+                        this.initializeOnboarding();
+                    }
+                } catch (error) {
+                    Logger.error('Failed to load configuration, showing onboarding', error);
+                    this.initializeOnboarding();
+                }
             }
             
             // Initialize enhancements
@@ -90,6 +167,20 @@ class TaskFlowApp {
         } catch (error) {
             Logger.error('Failed to initialize Enhanced TaskFlow AI', error);
             this.showCriticalError(error);
+        }
+    }
+
+    // Sync AuthUI with centralized auth manager for backward compatibility
+    syncAuthUIWithAuthManager() {
+        if (authManager.isAuthenticated()) {
+            this.authUI.authToken = authManager.getAuthToken();
+            this.authUI.currentUser = authManager.getCurrentUser();
+            this.authUI.isLoggedIn = true;
+            
+            Logger.log('AuthUI synced with centralized auth manager', {
+                user: this.authUI.currentUser,
+                isLoggedIn: this.authUI.isLoggedIn
+            });
         }
     }
 
@@ -145,9 +236,9 @@ class TaskFlowApp {
         this.modalManager.setupGlobalModalFunctions(this);
         
         // Load tasks, notes, and pending tasks
-        const tasks = StorageManager.loadTasks();
-        const notes = StorageManager.loadNotes();
-        const pendingTasks = StorageManager.loadPendingTasks();
+        const tasks = await this.authStorage.loadTasks();
+        const notes = await this.authStorage.loadNotes();
+        const pendingTasks = await this.authStorage.loadPendingTasks();
         this.appState.setTasks(tasks);
         this.appState.setNotes(notes);
         this.appState.setPendingTasks(pendingTasks);
@@ -157,6 +248,9 @@ class TaskFlowApp {
         
         // Show main app
         this.showMainApp();
+        
+        // Setup global functions now that all managers are initialized
+        setupGlobalFunctions(this);
         
         const initTime = performance.now() - startTime;
         Logger.log(`Main app initialized in ${initTime.toFixed(2)}ms`, this.appState.getDebugInfo());
@@ -198,11 +292,33 @@ class TaskFlowApp {
 
     async completeOnboarding(config) {
         try {
-            // Save configuration
-            const saved = StorageManager.saveConfiguration(config);
+            // Extract only the configuration fields needed for the database
+            const configToSave = {
+                service: config.service,
+                endpoint: config.endpoint,
+                apiKey: config.apiKey || '',
+                model: config.model,
+                nameVariations: config.nameVariations || [],
+                userName: config.userName,
+                hasCompletedOnboarding: true,
+                // Include optional fields if they exist
+                ...(config.fallbackEndpoint && { fallbackEndpoint: config.fallbackEndpoint }),
+                ...(config.systemPrompt && { systemPrompt: config.systemPrompt }),
+                ...(config.notesTitlePrompt && { notesTitlePrompt: config.notesTitlePrompt }),
+                ...(config.notesSummaryPrompt && { notesSummaryPrompt: config.notesSummaryPrompt }),
+                ...(config.notesTaskExtractionPrompt && { notesTaskExtractionPrompt: config.notesTaskExtractionPrompt })
+            };
+            
+            Logger.log('Saving configuration to database', configToSave);
+            
+            // Save configuration using auth storage (requires authentication)
+            const saved = await this.authStorage.saveConfiguration(configToSave);
             if (!saved) {
                 throw new Error('Failed to save configuration');
             }
+            
+            // Mark the full config as completed for app initialization
+            config.hasCompletedOnboarding = true;
             
             // Initialize main app
             await this.initializeMainApp(config);
@@ -237,33 +353,48 @@ class TaskFlowApp {
             clearInterval(this.autoSaveInterval);
         }
         
-        this.autoSaveInterval = setInterval(() => {
+        this.autoSaveInterval = setInterval(async () => {
             try {
-                StorageManager.saveTasks(this.appState.tasks);
-                StorageManager.saveNotes(this.appState.notes);
-                StorageManager.savePendingTasks(this.appState.pendingTasks);
+                // Only save if authenticated (required for authStorage)
+                if (authManager.isAuthenticated()) {
+                    await this.authStorage.saveTasks(this.appState.tasks);
+                    await this.authStorage.saveNotes(this.appState.notes);
+                    await this.authStorage.savePendingTasks(this.appState.pendingTasks);
+                }
             } catch (error) {
                 Logger.error('Auto-save failed', error);
             }
-        }, CONFIG.AUTO_SAVE_INTERVAL);
+        }, Math.max(CONFIG.AUTO_SAVE_INTERVAL, 30000)); // Minimum 30 seconds
         
         Logger.log('Auto-save setup completed');
     }
 
     setupEventListeners() {
         // Listen to app state changes
-        this.appState.addEventListener('tasksChanged', () => {
+        this.appState.addEventListener('tasksChanged', async () => {
             if (this.taskRenderer) {
                 this.taskRenderer.renderAll();
             }
-            StorageManager.saveTasks(this.appState.tasks);
+            try {
+                if (authManager.isAuthenticated()) {
+                    await this.authStorage.saveTasks(this.appState.tasks);
+                }
+            } catch (error) {
+                Logger.error('Failed to save tasks on change', error);
+            }
         });
 
-        this.appState.addEventListener('notesChanged', () => {
+        this.appState.addEventListener('notesChanged', async () => {
             if (this.notesRenderer) {
                 this.notesRenderer.refresh();
             }
-            StorageManager.saveNotes(this.appState.notes);
+            try {
+                if (authManager.isAuthenticated()) {
+                    await this.authStorage.saveNotes(this.appState.notes);
+                }
+            } catch (error) {
+                Logger.error('Failed to save notes on change', error);
+            }
         });
 
         this.appState.addEventListener('extractedTasksChanged', () => {
@@ -272,8 +403,14 @@ class TaskFlowApp {
             }
         });
 
-        this.appState.addEventListener('pendingTasksChanged', () => {
-            StorageManager.savePendingTasks(this.appState.pendingTasks);
+        this.appState.addEventListener('pendingTasksChanged', async () => {
+            try {
+                if (authManager.isAuthenticated()) {
+                    await this.authStorage.savePendingTasks(this.appState.pendingTasks);
+                }
+            } catch (error) {
+                Logger.error('Failed to save pending tasks on change', error);
+            }
         });
 
         this.appState.addEventListener('onboardingDataChanged', () => {
@@ -304,16 +441,28 @@ class TaskFlowApp {
         });
 
         // Window events
-        window.addEventListener('beforeunload', () => {
-            StorageManager.saveTasks(this.appState.tasks);
-            StorageManager.saveNotes(this.appState.notes);
+        window.addEventListener('beforeunload', async () => {
+            try {
+                if (authManager.isAuthenticated()) {
+                    await this.authStorage.saveTasks(this.appState.tasks);
+                    await this.authStorage.saveNotes(this.appState.notes);
+                }
+            } catch (error) {
+                Logger.error('Failed to save on beforeunload', error);
+            }
         });
 
         // Enhanced page visibility handling
-        document.addEventListener('visibilitychange', () => {
+        document.addEventListener('visibilitychange', async () => {
             if (document.hidden && this) {
                 // Save state when page becomes hidden
-                StorageManager.saveTasks(this.appState.tasks);
+                try {
+                    if (authManager.isAuthenticated()) {
+                        await this.authStorage.saveTasks(this.appState.tasks);
+                    }
+                } catch (error) {
+                    Logger.error('Failed to save on visibility change', error);
+                }
                 
                 // Clear performance metrics to save memory
                 if (this.performanceMetrics.renderTimes.length > 50) {
@@ -966,11 +1115,9 @@ class TaskFlowApp {
                 this.appState.setTasks([]);
                 this.appState.setNotes([]);
                 
-                // Clear all localStorage data
-                StorageManager.clearAll();
-                
-                // Also clear any potential remaining localStorage items manually
+                // Clear all localStorage data manually
                 localStorage.clear();
+                sessionStorage.clear();
                 
                 Logger.log('Complete application reset completed');
                 location.reload();
@@ -984,8 +1131,9 @@ class TaskFlowApp {
     resetAIConfigOnly() {
         if (confirm('This will reset your AI configuration but keep your tasks and notes. Are you sure?')) {
             try {
-                // Clear only AI-related configuration
-                StorageManager.clearAIConfig();
+                // Clear all local data since we're auth-only now
+                localStorage.clear();
+                sessionStorage.clear();
                 
                 Logger.log('AI configuration reset completed');
                 location.reload();
@@ -1209,13 +1357,736 @@ class TaskFlowApp {
         return this.notifications;
     }
 
-    destroy() {
+    // ============================================
+    // AUTHENTICATION HANDLERS
+    // ============================================
+
+    async handleAuthStateChange(isLoggedIn, user) {
+        Logger.log('Handling auth state change', { isLoggedIn, user });
+        
+        try {
+            // Sync AuthUI with auth manager
+            this.syncAuthUIWithAuthManager();
+            
+            if (isLoggedIn && user) {
+                // User just logged in - check for existing configuration
+                try {
+                    const config = await this.authStorage.loadConfiguration();
+                    if (config && config.hasCompletedOnboarding) {
+                        // User has existing configuration, reinitialize with it
+                        await this.initializeMainApp(config);
+                        this.notifications.showSuccess(`Welcome back, ${user.username}!`);
+                    } else {
+                        // User needs to complete onboarding - but don't show it if already in onboarding
+                        const onboardingOverlay = document.getElementById('onboardingOverlay');
+                        if (!onboardingOverlay || onboardingOverlay.style.display === 'none') {
+                            this.initializeOnboarding();
+                        }
+                    }
+                } catch (error) {
+                    Logger.error('Failed to load configuration after login', error);
+                    // Show onboarding if config load fails
+                    this.initializeOnboarding();
+                }
+                
+                // Update UI to show user info
+                this.updateUserInterface();
+            } else {
+                // User logged out or auth failed - show onboarding (authentication required)
+                this.initializeOnboarding();
+            }
+        } catch (error) {
+            Logger.error('Failed to handle auth state change', error);
+            this.notifications.showError('Authentication error. Please try again.');
+        }
+    }
+
+    async handleLogout() {
+        Logger.log('Handling logout');
+        
+        try {
+            // Clear auth-related data
+            this.authUI.isLoggedIn = false;
+            this.authUI.currentUser = null;
+            this.authUI.authToken = null;
+            
+            // Clear session data from auth storage
+            this.authStorage.clearSessionData();
+            
+            // Clear app state completely
+            this.appState.setTasks([]);
+            this.appState.setNotes([]);
+            this.appState.setPendingTasks([]);
+            this.appState.clearExtractedTasks();
+            
+            // Clear onboarding data
+            this.appState.onboardingData = {};
+            
+            // Stop auto-save
+            if (this.autoSaveInterval) {
+                clearInterval(this.autoSaveInterval);
+                this.autoSaveInterval = null;
+            }
+            
+            // Show onboarding since authentication is now required
+            this.initializeOnboarding();
+            
+            // Update UI to remove user info
+            this.updateUserInterface();
+            
+            Logger.log('Logout handled successfully - app state cleared');
+            
+        } catch (error) {
+            Logger.error('Failed to handle logout', error);
+            this.notifications.showError('Logout error. Please refresh the page.');
+        }
+    }
+
+    async migrateLocalDataIfNeeded() {
+        try {
+            // Check if there's local data that needs migration
+            const localTasks = StorageManager.loadTasks();
+            const localNotes = StorageManager.loadNotes();
+            const localConfig = StorageManager.loadConfiguration();
+            
+            if (localTasks.length > 0 || localNotes.length > 0 || localConfig) {
+                Logger.log('Found local data, offering migration', {
+                    tasks: localTasks.length,
+                    notes: localNotes.length,
+                    hasConfig: !!localConfig
+                });
+                
+                const shouldMigrate = confirm(
+                    'You have local data that can be synced to your account. ' +
+                    'Would you like to migrate your tasks and notes to the cloud?'
+                );
+                
+                if (shouldMigrate) {
+                    // Since we're now using auth-only storage, we can't migrate from hybrid
+                    // This method is no longer needed in the new architecture
+                    this.notifications.showInfo('Data migration is no longer available. Please manually recreate your data.');
+                }
+            }
+        } catch (error) {
+            Logger.error('Failed to migrate local data', error);
+            this.notifications.showError('Failed to migrate local data. Your data is still safe locally.');
+        }
+    }
+
+    updateUserInterface() {
+        // Update the user greeting in the existing header
+        const userGreeting = document.getElementById('userGreeting');
+        if (userGreeting) {
+            if (this.authUI.isLoggedIn && this.authUI.currentUser) {
+                userGreeting.textContent = this.authUI.currentUser.username;
+            } else {
+                userGreeting.textContent = this.appState.onboardingData?.userName || 'Guest';
+            }
+        }
+        
+        // Don't add separate user info section - use the existing header structure
+        // The logout functionality will be handled through the settings modal
+    }
+
+    // ============================================
+    // AI RECONFIGURATION METHODS
+    // ============================================
+
+    openAIReconfigModal() {
+        if (this.modalManager) {
+            this.modalManager.openModal('aiReconfig');
+        }
+    }
+
+    selectReconfigService(service) {
+        // Store the selected service temporarily
+        this.tempReconfigData = { service };
+        
+        // Show service configuration step
+        this.showReconfigStep(2, service);
+        
+        Logger.log('AI reconfig service selected', { service });
+    }
+
+    showReconfigStep(stepNumber, service = null) {
+        // Hide all steps
+        document.querySelectorAll('.reconfig-step').forEach(step => {
+            step.style.display = 'none';
+            step.classList.remove('active');
+        });
+        
+        // Show the target step
+        const targetStep = document.getElementById(`reconfigStep${stepNumber}`);
+        if (targetStep) {
+            targetStep.style.display = 'block';
+            targetStep.classList.add('active');
+            
+            if (stepNumber === 2 && service) {
+                this.populateServiceConfigStep(service);
+            } else if (stepNumber === 3) {
+                this.populateModelSelectionStep();
+            }
+        }
+    }
+
+    populateServiceConfigStep(service) {
+        const content = document.getElementById('reconfigServiceContent');
+        if (!content) return;
+        
+        const currentConfig = this.appState.onboardingData;
+        
+        switch (service) {
+            case 'ollama':
+                content.innerHTML = `
+                    <h3>Configure Ollama</h3>
+                    <p class="step-description">Enter your Ollama server details</p>
+                    
+                    <div class="form-group">
+                        <label for="reconfigOllamaUrl">Ollama Server URL</label>
+                        <input type="text" id="reconfigOllamaUrl" 
+                               value="${currentConfig.service === 'ollama' ? currentConfig.endpoint?.replace('/api/chat', '') || 'localhost:11434' : 'localhost:11434'}"
+                               placeholder="e.g., localhost:11434 or 192.168.1.100:11434" />
+                        <p class="input-hint">Just enter the address, we'll handle the rest</p>
+                    </div>
+                    
+                    <div class="reconfig-actions">
+                        <button class="btn btn-primary" onclick="testReconfigConnection('ollama')">
+                            Test Connection
+                        </button>
+                        <button class="btn btn-secondary" onclick="taskFlowApp?.showReconfigStep?.(1)">
+                            Back
+                        </button>
+                    </div>
+                    
+                    <div class="connection-status" id="reconfigConnectionStatus"></div>
+                `;
+                break;
+                
+            case 'openai':
+                content.innerHTML = `
+                    <h3>Configure OpenAI</h3>
+                    <p class="step-description">Enter your OpenAI API details</p>
+                    
+                    <div class="form-group">
+                        <label for="reconfigOpenaiKey">OpenAI API Key</label>
+                        <input type="password" id="reconfigOpenaiKey" 
+                               value="${currentConfig.service === 'openai' ? currentConfig.apiKey || '' : ''}"
+                               placeholder="sk-..." required />
+                        <p class="input-hint">Your API key is stored securely and never sent to our servers</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="reconfigOpenaiEndpoint">API Endpoint (Optional)</label>
+                        <input type="url" id="reconfigOpenaiEndpoint" 
+                               value="${currentConfig.service === 'openai' ? currentConfig.endpoint || 'https://api.openai.com/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions'}"
+                               placeholder="https://api.openai.com/v1/chat/completions" />
+                        <p class="input-hint">Leave as default for standard OpenAI endpoint</p>
+                    </div>
+                    
+                    <div class="reconfig-actions">
+                        <button class="btn btn-primary" onclick="testReconfigConnection('openai')">
+                            Test & Continue
+                        </button>
+                        <button class="btn btn-secondary" onclick="taskFlowApp?.showReconfigStep?.(1)">
+                            Back
+                        </button>
+                    </div>
+                    
+                    <div class="connection-status" id="reconfigConnectionStatus"></div>
+                `;
+                break;
+                
+            case 'openwebui':
+                content.innerHTML = `
+                    <h3>Configure Open WebUI</h3>
+                    <p class="step-description">Enter your Open WebUI server details</p>
+                    
+                    <div class="form-group">
+                        <label for="reconfigOpenwebuiUrl">Open WebUI Server URL</label>
+                        <input type="text" id="reconfigOpenwebuiUrl" 
+                               value="${currentConfig.service === 'openwebui' ? currentConfig.endpoint?.replace('/api/chat/completions', '') || 'localhost:3000' : 'localhost:3000'}"
+                               placeholder="e.g., localhost:3000 or https://openwebui.example.com" />
+                        <p class="input-hint">Your Open WebUI server address</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="reconfigOpenwebuiKey">API Key</label>
+                        <input type="password" id="reconfigOpenwebuiKey" 
+                               value="${currentConfig.service === 'openwebui' ? currentConfig.apiKey || '' : ''}"
+                               placeholder="Your Open WebUI API key" required />
+                        <p class="input-hint">Get your API key from Settings > Account in Open WebUI</p>
+                    </div>
+                    
+                    <div class="reconfig-actions">
+                        <button class="btn btn-primary" onclick="testReconfigConnection('openwebui')">
+                            Test Connection
+                        </button>
+                        <button class="btn btn-secondary" onclick="taskFlowApp?.showReconfigStep?.(1)">
+                            Back
+                        </button>
+                    </div>
+                    
+                    <div class="connection-status" id="reconfigConnectionStatus"></div>
+                `;
+                break;
+        }
+        
+        // Add global function for testing connection
+        window.testReconfigConnection = (service) => this.testReconfigConnection(service);
+    }
+
+    async testReconfigConnection(service) {
+        const statusDiv = document.getElementById('reconfigConnectionStatus');
+        const testBtn = document.querySelector('.reconfig-actions .btn-primary');
+        
+        if (testBtn) {
+            testBtn.innerHTML = '<span class="loading"></span> Testing...';
+            testBtn.disabled = true;
+        }
+        
+        if (statusDiv) {
+            statusDiv.innerHTML = '';
+        }
+        
+        try {
+            let result;
+            
+            switch (service) {
+                case 'ollama':
+                    const ollamaUrl = document.getElementById('reconfigOllamaUrl')?.value?.trim();
+                    if (!ollamaUrl) {
+                        throw new Error('Please enter an Ollama server URL');
+                    }
+                    result = await OllamaService.getAvailableModels(ollamaUrl);
+                    if (result.success) {
+                        this.tempReconfigData.endpoint = result.endpoint;
+                        this.tempReconfigData.models = result.models;
+                    }
+                    break;
+                    
+                case 'openai':
+                    const apiKey = document.getElementById('reconfigOpenaiKey')?.value?.trim();
+                    const endpoint = document.getElementById('reconfigOpenaiEndpoint')?.value?.trim() || 'https://api.openai.com/v1/chat/completions';
+                    
+                    if (!apiKey) {
+                        throw new Error('Please enter your OpenAI API key');
+                    }
+                    
+                    const validation = OpenAIService.validateApiKey(apiKey);
+                    if (!validation.valid) {
+                        throw new Error(validation.message);
+                    }
+                    
+                    this.tempReconfigData.apiKey = apiKey;
+                    this.tempReconfigData.endpoint = endpoint;
+                    result = { success: true, message: 'API key validated successfully' };
+                    break;
+                    
+                case 'openwebui':
+                    const openwebuiUrl = document.getElementById('reconfigOpenwebuiUrl')?.value?.trim();
+                    const openwebuiKey = document.getElementById('reconfigOpenwebuiKey')?.value?.trim();
+                    
+                    const openwebuiValidation = OpenWebUIService.validateConnection(openwebuiUrl, openwebuiKey);
+                    if (!openwebuiValidation.valid) {
+                        throw new Error(openwebuiValidation.message);
+                    }
+                    
+                    result = await OpenWebUIService.getAvailableModels(openwebuiUrl, openwebuiKey);
+                    if (result.success) {
+                        this.tempReconfigData.apiKey = openwebuiKey;
+                        this.tempReconfigData.endpoint = result.endpoint;
+                        this.tempReconfigData.fallbackEndpoint = result.fallbackEndpoint;
+                        this.tempReconfigData.models = result.models;
+                    }
+                    break;
+            }
+            
+            if (result.success) {
+                if (statusDiv) {
+                    statusDiv.innerHTML = `<div class="success">✓ ${result.message || 'Connection successful!'}</div>`;
+                }
+                
+                // Move to model selection step
+                setTimeout(() => {
+                    this.showReconfigStep(3);
+                }, 1500);
+                
+                Logger.log('AI reconfig connection test successful', { service });
+            } else {
+                throw new Error(result.message || 'Connection failed');
+            }
+            
+        } catch (error) {
+            if (statusDiv) {
+                statusDiv.innerHTML = `<div class="error">❌ ${error.message}</div>`;
+            }
+            Logger.error('AI reconfig connection test failed', error);
+        } finally {
+            if (testBtn) {
+                testBtn.textContent = service === 'openai' ? 'Test & Continue' : 'Test Connection';
+                testBtn.disabled = false;
+            }
+        }
+    }
+
+    populateModelSelectionStep() {
+        const content = document.getElementById('reconfigModelContent');
+        if (!content || !this.tempReconfigData) return;
+        
+        const service = this.tempReconfigData.service;
+        const currentConfig = this.appState.onboardingData;
+        
+        switch (service) {
+            case 'ollama':
+            case 'openwebui':
+                const models = this.tempReconfigData.models || [];
+                content.innerHTML = `
+                    <h3>Select Model</h3>
+                    <p class="step-description">Choose which model to use</p>
+                    
+                    <div class="form-group">
+                        <label for="reconfigModelSelect">Available Models</label>
+                        <select id="reconfigModelSelect" size="6">
+                            ${models.map(model => {
+                                const value = service === 'ollama' ? model.name : model.id;
+                                const display = service === 'ollama' ? OllamaService.formatModelDisplay(model) : model.name;
+                                const selected = currentConfig.model === value ? 'selected' : '';
+                                return `<option value="${value}" ${selected}>${display}</option>`;
+                            }).join('')}
+                        </select>
+                    </div>
+                    
+                    <div class="reconfig-actions">
+                        <button class="btn btn-primary" onclick="taskFlowApp?.proceedToTestStep?.()">
+                            Continue
+                        </button>
+                        <button class="btn btn-secondary" onclick="taskFlowApp?.showReconfigStep?.(2)">
+                            Back
+                        </button>
+                    </div>
+                `;
+                break;
+                
+            case 'openai':
+                content.innerHTML = `
+                    <h3>Select Model</h3>
+                    <p class="step-description">Choose which OpenAI model to use</p>
+                    
+                    <div class="model-options">
+                        <label class="model-option">
+                            <input type="radio" name="reconfigOpenaiModel" value="gpt-4o-mini" 
+                                   ${currentConfig.model === 'gpt-4o-mini' ? 'checked' : ''} />
+                            <div class="model-card">
+                                <h4>GPT-4o Mini</h4>
+                                <p>Fast and cost-effective</p>
+                            </div>
+                        </label>
+                        <label class="model-option">
+                            <input type="radio" name="reconfigOpenaiModel" value="gpt-4o" 
+                                   ${currentConfig.model === 'gpt-4o' ? 'checked' : ''} />
+                            <div class="model-card">
+                                <h4>GPT-4o</h4>
+                                <p>Most capable model</p>
+                            </div>
+                        </label>
+                        <label class="model-option">
+                            <input type="radio" name="reconfigOpenaiModel" value="gpt-3.5-turbo" 
+                                   ${currentConfig.model === 'gpt-3.5-turbo' ? 'checked' : ''} />
+                            <div class="model-card">
+                                <h4>GPT-3.5 Turbo</h4>
+                                <p>Legacy fast model</p>
+                            </div>
+                        </label>
+                        <label class="model-option">
+                            <input type="radio" name="reconfigOpenaiModel" value="custom" 
+                                   ${!['gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo'].includes(currentConfig.model) ? 'checked' : ''} />
+                            <div class="model-card">
+                                <h4>Custom Model</h4>
+                                <input type="text" id="reconfigCustomModelName" 
+                                       value="${!['gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo'].includes(currentConfig.model) ? currentConfig.model || '' : ''}"
+                                       placeholder="Enter model name..." 
+                                       onclick="document.querySelector('input[value=custom]').checked = true" />
+                            </div>
+                        </label>
+                    </div>
+                    
+                    <div class="reconfig-actions">
+                        <button class="btn btn-primary" onclick="taskFlowApp?.proceedToTestStep?.()">
+                            Continue
+                        </button>
+                        <button class="btn btn-secondary" onclick="taskFlowApp?.showReconfigStep?.(2)">
+                            Back
+                        </button>
+                    </div>
+                `;
+                break;
+        }
+        
+        // Add global function
+        window.proceedToTestStep = () => this.proceedToTestStep();
+    }
+
+    proceedToTestStep() {
+        // Get selected model
+        let selectedModel = '';
+        const service = this.tempReconfigData.service;
+        
+        switch (service) {
+            case 'ollama':
+            case 'openwebui':
+                selectedModel = document.getElementById('reconfigModelSelect')?.value;
+                break;
+            case 'openai':
+                const selectedElement = document.querySelector('input[name="reconfigOpenaiModel"]:checked');
+                if (selectedElement?.value === 'custom') {
+                    selectedModel = document.getElementById('reconfigCustomModelName')?.value?.trim();
+                    if (!selectedModel) {
+                        this.notifications.showError('Please enter a model name');
+                        return;
+                    }
+                } else {
+                    selectedModel = selectedElement?.value;
+                }
+                break;
+        }
+        
+        if (!selectedModel) {
+            this.notifications.showError('Please select a model');
+            return;
+        }
+        
+        this.tempReconfigData.model = selectedModel;
+        this.showReconfigStep(4);
+        this.testReconfiguredAI();
+    }
+
+    async testReconfiguredAI() {
+        const testConnection = document.getElementById('reconfigTestConnection');
+        const testModel = document.getElementById('reconfigTestModel');
+        const finalActions = document.getElementById('reconfigFinalActions');
+        
+        try {
+            // Test connection
+            if (testConnection) {
+                const span = testConnection.querySelector('span:last-child');
+                if (span) span.textContent = 'Testing connection...';
+            }
+            
+            // Create temporary AI service for testing
+            const tempConfig = {
+                ...this.tempReconfigData,
+                nameVariations: this.appState.onboardingData.nameVariations
+            };
+            
+            const tempAIService = this.createAIService(tempConfig);
+            const connectionResult = await tempAIService.testConnection();
+            
+            if (connectionResult.success) {
+                if (testConnection) {
+                    testConnection.className = 'test-item success';
+                    const icon = testConnection.querySelector('.test-icon');
+                    const span = testConnection.querySelector('span:last-child');
+                    if (icon) icon.textContent = '✓';
+                    if (span) span.textContent = 'Connection successful';
+                }
+                
+                // Test model
+                if (testModel) {
+                    const span = testModel.querySelector('span:last-child');
+                    if (span) span.textContent = 'Verifying model...';
+                    
+                    setTimeout(() => {
+                        testModel.className = 'test-item success';
+                        const icon = testModel.querySelector('.test-icon');
+                        const modelSpan = testModel.querySelector('span:last-child');
+                        if (icon) icon.textContent = '✓';
+                        if (modelSpan) modelSpan.textContent = 'Model verified';
+                        
+                        // Show final actions
+                        if (finalActions) {
+                            finalActions.style.display = 'flex';
+                        }
+                    }, 500);
+                }
+            } else {
+                throw new Error(connectionResult.message);
+            }
+            
+        } catch (error) {
+            Logger.error('AI reconfiguration test failed', error);
+            
+            if (testConnection) {
+                testConnection.className = 'test-item error';
+                const icon = testConnection.querySelector('.test-icon');
+                const span = testConnection.querySelector('span:last-child');
+                if (icon) icon.textContent = '❌';
+                if (span) span.textContent = `Error: ${error.message}`;
+            }
+            
+            if (finalActions) {
+                finalActions.innerHTML = `
+                    <button class="btn btn-secondary" onclick="taskFlowApp?.showReconfigStep?.(3)">
+                        Back to Model Selection
+                    </button>
+                    <button class="btn btn-secondary" onclick="closeModal('aiReconfig')">
+                        Cancel
+                    </button>
+                `;
+                finalActions.style.display = 'flex';
+            }
+        }
+    }
+
+    async saveAIReconfiguration() {
+        try {
+            if (!this.tempReconfigData) {
+                throw new Error('No configuration data to save');
+            }
+            
+            // Merge with existing configuration
+            const newConfig = {
+                ...this.appState.onboardingData,
+                service: this.tempReconfigData.service,
+                endpoint: this.tempReconfigData.endpoint,
+                model: this.tempReconfigData.model,
+                apiKey: this.tempReconfigData.apiKey,
+                fallbackEndpoint: this.tempReconfigData.fallbackEndpoint
+            };
+            
+            // Save configuration
+            const saved = await this.authStorage.saveConfiguration(newConfig);
+            if (!saved) {
+                throw new Error('Failed to save configuration');
+            }
+            
+            // Update app state
+            this.appState.setOnboardingData(newConfig);
+            
+            // Recreate AI service with new configuration
+            this.aiService = this.createAIService(newConfig);
+            
+            // Update managers with new AI service
+            if (this.nameVariationsManager) {
+                this.nameVariationsManager.aiService = this.aiService;
+            }
+            if (this.taskExtractionManager) {
+                this.taskExtractionManager.aiService = this.aiService;
+            }
+            if (this.notesManager) {
+                this.notesManager.aiService = this.aiService;
+            }
+            
+            // Close modal and show success
+            this.modalManager?.closeModal('aiReconfig');
+            this.notifications.showSuccess('AI configuration updated successfully!');
+            
+            // Clear temporary data
+            this.tempReconfigData = null;
+            
+            Logger.log('AI reconfiguration completed successfully', { 
+                service: newConfig.service, 
+                model: newConfig.model 
+            });
+            
+        } catch (error) {
+            Logger.error('Failed to save AI reconfiguration', error);
+            this.notifications.showError('Failed to save configuration. Please try again.');
+        }
+    }
+
+    async testAIConnection() {
+        if (!this.aiService) {
+            this.notifications.showError('No AI service configured');
+            return;
+        }
+        
+        const testBtn = document.querySelector('[onclick*="testAIConnection"]');
+        if (testBtn) {
+            const originalText = testBtn.textContent;
+            testBtn.innerHTML = '<span class="loading"></span> Testing...';
+            testBtn.disabled = true;
+            
+            try {
+                const result = await this.aiService.testConnection();
+                if (result.success) {
+                    this.notifications.showSuccess('AI connection test successful!');
+                } else {
+                    this.notifications.showError(`Connection test failed: ${result.message}`);
+                }
+            } catch (error) {
+                this.notifications.showError(`Connection test failed: ${error.message}`);
+                Logger.error('AI connection test failed', error);
+            } finally {
+                if (testBtn) {
+                    testBtn.textContent = originalText;
+                    testBtn.disabled = false;
+                }
+            }
+        }
+    }
+
+    // ============================================
+    // CONFIGURATION VALIDATION
+    // ============================================
+
+    hasValidAIConfiguration(config) {
+        if (!config) {
+            Logger.log('No configuration found');
+            return false;
+        }
+
+        // Check for required AI configuration fields (userName is optional for existing configs)
+        const requiredFields = ['service', 'endpoint', 'model'];
+        const hasRequiredFields = requiredFields.every(field => {
+            const hasField = config[field] && config[field].trim() !== '';
+            if (!hasField) {
+                Logger.log(`Missing required field: ${field}`);
+            }
+            return hasField;
+        });
+
+        if (!hasRequiredFields) {
+            Logger.log('Configuration missing required fields');
+            return false;
+        }
+
+        // Check service-specific requirements
+        if (config.service === 'openai' || config.service === 'openwebui') {
+            if (!config.apiKey || config.apiKey.trim() === '') {
+                Logger.log('OpenAI/OpenWebUI service requires API key');
+                return false;
+            }
+        }
+
+        // If userName is missing, add a default one
+        if (!config.userName) {
+            config.userName = 'User';
+            Logger.log('Added default userName to configuration');
+        }
+
+        Logger.log('Valid AI configuration found', {
+            service: config.service,
+            model: config.model,
+            hasApiKey: !!(config.apiKey),
+            userName: config.userName
+        });
+
+        return true;
+    }
+
+    async destroy() {
         if (this.autoSaveInterval) {
             clearInterval(this.autoSaveInterval);
         }
         
         // Save final state
-        StorageManager.saveTasks(this.appState.tasks);
+        try {
+            if (authManager.isAuthenticated()) {
+                await this.authStorage.saveTasks(this.appState.tasks);
+            }
+        } catch (error) {
+            Logger.error('Failed to save on destroy', error);
+        }
         
         Logger.log('TaskFlow AI destroyed');
     }
@@ -1224,18 +2095,54 @@ class TaskFlowApp {
 // Global app instance
 let app = null;
 
-// Initialize app when DOM is ready
-function initializeApp() {
-    if (app) {
-        app.destroy();
-    }
+// Initialize basic global functions immediately to prevent "function not defined" errors
+function initializeBasicGlobalFunctions() {
+    // Basic fallback functions that show loading messages
+    const showLoadingMessage = () => {
+        alert('The application is still loading. Please wait a moment and try again.');
+    };
     
-    app = new TaskFlowApp();
-    app.initialize();
+    // Notes functions
+    window.openNotesModal = window.openNotesModal || showLoadingMessage;
+    window.closeNotesModal = window.closeNotesModal || (() => {});
+    window.saveNote = window.saveNote || showLoadingMessage;
+    window.updateNote = window.updateNote || showLoadingMessage;
+    window.generateSummary = window.generateSummary || showLoadingMessage;
+    window.performExport = window.performExport || showLoadingMessage;
+    window.copyNoteContent = window.copyNoteContent || showLoadingMessage;
+    window.copySummary = window.copySummary || showLoadingMessage;
+    window.exportSingleNote = window.exportSingleNote || showLoadingMessage;
+    window.confirmDeleteNote = window.confirmDeleteNote || showLoadingMessage;
+    window.switchTab = window.switchTab || showLoadingMessage;
+    window.searchNotes = window.searchNotes || (() => {});
+    window.sortNotes = window.sortNotes || (() => {});
+    window.toggleTagFilter = window.toggleTagFilter || (() => {});
+    window.clearTagFilters = window.clearTagFilters || (() => {});
+    window.clearSearch = window.clearSearch || (() => {});
+    window.openNote = window.openNote || showLoadingMessage;
     
-    // Make app available globally for HTML onclick handlers
-    window.taskFlowApp = app;
+    // Task functions
+    window.openModal = window.openModal || showLoadingMessage;
+    window.closeModal = window.closeModal || (() => {});
+    window.saveQuickTask = window.saveQuickTask || showLoadingMessage;
+    window.extractTask = window.extractTask || showLoadingMessage;
+    window.saveExtractedTasks = window.saveExtractedTasks || showLoadingMessage;
+    window.removeExtractedTask = window.removeExtractedTask || showLoadingMessage;
+    window.resetAiModal = window.resetAiModal || (() => {});
+    window.toggleTaskComplete = window.toggleTaskComplete || showLoadingMessage;
+    window.toggleCompletedTasks = window.toggleCompletedTasks || (() => {});
+    window.togglePostponedTasks = window.togglePostponedTasks || (() => {});
+    window.togglePendingTasks = window.togglePendingTasks || (() => {});
+    window.openSettings = window.openSettings || showLoadingMessage;
     
+    Logger.log('Basic global functions initialized');
+}
+
+// Initialize basic functions immediately
+initializeBasicGlobalFunctions();
+
+// Function to setup global functions after app initialization
+function setupGlobalFunctions(app) {
     // Global functions for HTML compatibility
     window.openModal = (type, taskId) => app.openModal(type, taskId);
     window.closeModal = (type) => app.closeModal(type);
@@ -1251,6 +2158,10 @@ function initializeApp() {
     window.resetOnboarding = () => app.resetOnboarding();
     window.resetAIConfigOnly = () => app.resetAIConfigOnly();
     
+    // AI Reconfiguration functions
+    window.selectReconfigService = (service) => app.selectReconfigService(service);
+    window.saveAIReconfiguration = () => app.saveAIReconfiguration();
+
     // Task management functions
     window.updateTask = (event) => app.updateTask(event);
     window.deleteTask = () => app.deleteTask();
@@ -1259,24 +2170,150 @@ function initializeApp() {
     window.copyTask = () => app.copyTask();
     window.moveToToday = () => app.moveToToday();
     
-    // Notes functions
-    window.openNotesModal = (type, noteId) => app.notesModalManager?.openModal(type, noteId);
-    window.closeNotesModal = (type) => app.notesModalManager?.closeModal(type);
-    window.saveNote = (event) => app.notesModalManager?.saveNote(event);
-    window.updateNote = (event) => app.notesModalManager?.updateNote(event);
-    window.generateSummary = () => app.notesModalManager?.generateSummary();
-    window.performExport = () => app.notesModalManager?.performExport();
-    window.copyNoteContent = (noteId) => app.notesModalManager?.copyNoteContent(noteId);
-    window.copySummary = () => app.notesModalManager?.copySummary();
-    window.exportSingleNote = (noteId) => app.notesModalManager?.exportSingleNote(noteId);
-    window.confirmDeleteNote = (noteId) => app.notesModalManager?.confirmDeleteNote(noteId);
-    window.switchTab = (tab) => app.switchTab(tab);
-    window.searchNotes = (query) => app.notesRenderer?.setSearchQuery(query);
-    window.sortNotes = (sortBy) => app.notesRenderer?.setSortBy(sortBy);
-    window.toggleTagFilter = (tag) => app.notesRenderer?.toggleTagFilter(tag);
-    window.clearTagFilters = () => app.notesRenderer?.clearTagFilters();
-    window.clearSearch = () => app.clearSearch();
-    window.openNote = (noteId) => app.notesModalManager?.openModal('view', noteId);
+    // Notes functions - properly initialized after app is ready
+    window.openNotesModal = (type, noteId) => {
+        if (app && app.notesModalManager) {
+            app.notesModalManager.openModal(type, noteId);
+        } else {
+            alert('Notes functionality is still loading. Please wait a moment and try again.');
+        }
+    };
+    window.closeNotesModal = (type) => {
+        if (app && app.notesModalManager) {
+            app.notesModalManager.closeModal(type);
+        } else {
+            // Fallback: try to close modal manually
+            const modalId = `notes${type.charAt(0).toUpperCase() + type.slice(1)}ModalOverlay`;
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.remove();
+            }
+        }
+    };
+    window.saveNote = (event) => {
+        if (app && app.notesModalManager) {
+            app.notesModalManager.saveNote(event);
+        } else {
+            alert('Notes functionality is still loading. Please wait a moment and try again.');
+        }
+    };
+    window.updateNote = (event) => {
+        if (app && app.notesModalManager) {
+            app.notesModalManager.updateNote(event);
+        } else {
+            alert('Notes functionality is still loading. Please wait a moment and try again.');
+        }
+    };
+    window.generateSummary = () => {
+        if (app && app.notesModalManager) {
+            app.notesModalManager.generateSummary();
+        } else {
+            alert('Notes functionality is still loading. Please wait a moment and try again.');
+        }
+    };
+    window.performExport = () => {
+        if (app && app.notesModalManager) {
+            app.notesModalManager.performExport();
+        } else {
+            alert('Notes functionality is still loading. Please wait a moment and try again.');
+        }
+    };
+    window.copyNoteContent = (noteId) => {
+        if (app && app.notesModalManager) {
+            app.notesModalManager.copyNoteContent(noteId);
+        } else {
+            alert('Notes functionality is still loading. Please wait a moment and try again.');
+        }
+    };
+    window.copySummary = () => {
+        if (app && app.notesModalManager) {
+            app.notesModalManager.copySummary();
+        } else {
+            alert('Notes functionality is still loading. Please wait a moment and try again.');
+        }
+    };
+    window.exportSingleNote = (noteId) => {
+        if (app && app.notesModalManager) {
+            app.notesModalManager.exportSingleNote(noteId);
+        } else {
+            alert('Notes functionality is still loading. Please wait a moment and try again.');
+        }
+    };
+    window.confirmDeleteNote = (noteId) => {
+        if (app && app.notesModalManager) {
+            app.notesModalManager.confirmDeleteNote(noteId);
+        } else {
+            console.error('Notes modal manager not initialized yet');
+            alert('Notes functionality is still loading. Please wait a moment and try again.');
+        }
+    };
+    window.switchTab = (tab) => {
+        if (app) {
+            app.switchTab(tab);
+        } else {
+            // App not initialized yet
+        }
+    };
+    window.searchNotes = (query) => {
+        if (app && app.notesRenderer) {
+            app.notesRenderer.setSearchQuery(query);
+        } else {
+            // Notes renderer not initialized yet
+        }
+    };
+    window.sortNotes = (sortBy) => {
+        if (app && app.notesRenderer) {
+            app.notesRenderer.setSortBy(sortBy);
+        } else {
+            // Notes renderer not initialized yet
+        }
+    };
+    window.toggleTagFilter = (tag) => {
+        if (app && app.notesRenderer) {
+            app.notesRenderer.toggleTagFilter(tag);
+        } else {
+            // Notes renderer not initialized yet
+        }
+    };
+    window.clearTagFilters = () => {
+        if (app && app.notesRenderer) {
+            app.notesRenderer.clearTagFilters();
+        } else {
+            // Notes renderer not initialized yet
+        }
+    };
+    window.clearSearch = () => {
+        if (app) {
+            app.clearSearch();
+        } else {
+            // App not initialized yet
+        }
+    };
+    window.openNote = (noteId) => {
+        if (app && app.notesModalManager) {
+            app.notesModalManager.openModal('view', noteId);
+        } else {
+            alert('Notes functionality is still loading. Please wait a moment and try again.');
+        }
+    };
+    
+    Logger.log('Global functions setup completed after app initialization');
+}
+
+// Initialize app when DOM is ready
+function initializeApp() {
+    if (app) {
+        app.destroy();
+    }
+    
+    app = new TaskFlowApp();
+    app.initialize();
+    
+    // Make app available globally for HTML onclick handlers
+    window.taskFlowApp = app;
+    
+    // Make authManager globally available for settings modal
+    window.authManager = authManager;
     
     // Pending task approval functions
     window.togglePendingTasks = () => app.togglePendingTasks();
@@ -1290,6 +2327,49 @@ function initializeApp() {
     window.clearPerformanceMetrics = () => {
         app.performanceMetrics.renderTimes = [];
         app.performanceMetrics.aiRequestTimes = [];
+    };
+    
+    // Sync debugging functions
+    window.getSyncStatus = () => app.authStorage?.getSyncStatus();
+    window.forceSync = () => app.authStorage?.forceSync();
+    
+    // Auth debugging functions
+    window.checkAuth = () => {
+        console.log('Manual auth check:', {
+            authToken: localStorage.getItem('auth_token'),
+            authUI: app.authUI,
+            isAuthenticated: app.authUI?.isAuthenticated(),
+            isLoggedIn: app.authUI?.isLoggedIn
+        });
+        return app.authUI?.checkAuthStatus();
+    };
+    window.forceLogin = async (username, password) => {
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await response.json();
+        console.log('Login response:', data);
+        if (data.token) {
+            localStorage.setItem('auth_token', data.token);
+            localStorage.setItem('user_data', JSON.stringify(data.user));
+            app.authUI.authToken = data.token;
+            app.authUI.currentUser = data.user;
+            app.authUI.isLoggedIn = true;
+            app.authUI.triggerAuthStateChange();
+        }
+        return data;
+    };
+    window.logout = () => {
+        if (app.authUI) {
+            app.authUI.logout();
+        }
+    };
+    window.showAuthModal = () => {
+        if (app.authUI) {
+            app.authUI.showAuthModal();
+        }
     };
 }
 

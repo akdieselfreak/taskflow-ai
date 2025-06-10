@@ -15,6 +15,17 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Parse CORS origins from environment variable
+const getCorsOrigins = () => {
+    if (process.env.CORS_ORIGIN) {
+        return process.env.CORS_ORIGIN.split(',').map(origin => origin.trim());
+    }
+    
+    return process.env.NODE_ENV === 'production' 
+        ? ['https://your-domain.com'] 
+        : ['http://localhost:8000', 'http://localhost:3000', 'http://localhost:3001'];
+};
+
 // Security middleware
 app.use(helmet({
     contentSecurityPolicy: {
@@ -22,26 +33,45 @@ app.use(helmet({
             defaultSrc: ["'self'"],
             styleSrc: ["'self'", "'unsafe-inline'"],
             scriptSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrcAttr: ["'unsafe-inline'"],
             imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'", "http://localhost:*", "https://api.openai.com"]
+            connectSrc: ["'self'", "http://localhost:*", "http://100.66.248.101:*", "https://api.openai.com"]
         }
     }
 }));
 
 app.use(cors({
-    origin: process.env.NODE_ENV === 'production' 
-        ? ['https://your-domain.com'] 
-        : ['http://localhost:8000', 'http://localhost:3000'],
+    origin: getCorsOrigins(),
     credentials: true
 }));
 
-// Rate limiting
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
-    message: 'Too many requests from this IP, please try again later.'
+// Rate limiting with environment variable support
+// More permissive rate limiting for authentication endpoints
+const authLimiter = rateLimit({
+    windowMs: parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS) || 5 * 60 * 1000, // 5 minutes
+    max: parseInt(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS) || 50, // 50 auth requests per 5 minutes
+    message: 'Too many authentication attempts, please try again later.',
+    standardHeaders: true,
+    legacyHeaders: false,
 });
-app.use('/api/', limiter);
+
+// Stricter rate limiting for data endpoints
+const dataLimiter = rateLimit({
+    windowMs: parseInt(process.env.DATA_RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
+    max: parseInt(process.env.DATA_RATE_LIMIT_MAX_REQUESTS) || 200, // 200 data requests per 15 minutes
+    message: 'Too many data requests, please try again later.',
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Apply auth rate limiting to authentication endpoints
+app.use('/api/auth/', authLimiter);
+
+// Apply data rate limiting to other API endpoints
+app.use('/api/tasks', dataLimiter);
+app.use('/api/notes', dataLimiter);
+app.use('/api/config', dataLimiter);
+app.use('/api/migrate', dataLimiter);
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -58,7 +88,7 @@ app.use(express.static('.', {
 }));
 
 // Authentication middleware
-const authenticateToken = (req, res, next) => {
+const authenticateToken = async (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
@@ -66,31 +96,42 @@ const authenticateToken = (req, res, next) => {
         return res.status(401).json({ error: 'Access token required' });
     }
 
-    const verification = dbManager.verifyToken(token);
-    
-    if (!verification.valid) {
-        return res.status(403).json({ error: verification.error });
-    }
+    try {
+        const verification = await dbManager.verifyToken(token);
+        
+        if (!verification.valid) {
+            return res.status(403).json({ error: verification.error });
+        }
 
-    req.user = verification.user;
-    next();
+        req.user = verification.user;
+        next();
+    } catch (error) {
+        Logger.error('Token verification failed', error);
+        return res.status(403).json({ error: 'Invalid token' });
+    }
 };
 
 // ====== AUTHENTICATION ROUTES ======
 
 app.post('/api/auth/register', async (req, res) => {
     try {
+        Logger.log('Registration request received', { body: req.body, headers: req.headers['content-type'] });
+        
         const { username, email, password } = req.body;
 
         if (!username || !password) {
+            Logger.log('Registration validation failed: missing username or password');
             return res.status(400).json({ error: 'Username and password are required' });
         }
 
         if (password.length < 6) {
+            Logger.log('Registration validation failed: password too short');
             return res.status(400).json({ error: 'Password must be at least 6 characters long' });
         }
 
+        Logger.log('Calling dbManager.registerUser', { username, email: email || 'none' });
         const result = await dbManager.registerUser(username, email, password);
+        Logger.log('Registration result', result);
         
         if (result.success) {
             res.status(201).json({ 
@@ -98,6 +139,7 @@ app.post('/api/auth/register', async (req, res) => {
                 userId: result.userId 
             });
         } else {
+            Logger.log('Registration failed', { error: result.error });
             res.status(400).json({ error: result.error });
         }
     } catch (error) {
@@ -151,17 +193,19 @@ app.get('/api/user/profile', authenticateToken, (req, res) => {
 
 // ====== TASK ROUTES ======
 
-app.get('/api/tasks', authenticateToken, (req, res) => {
+app.get('/api/tasks', authenticateToken, async (req, res) => {
     try {
-        const tasks = dbManager.loadTasks(req.user.id);
-        res.json({ tasks });
+        Logger.log('Loading tasks for user', { userId: req.user.id });
+        const tasks = await dbManager.loadTasks(req.user.id);
+        Logger.log('Tasks loaded', { userId: req.user.id, count: tasks ? tasks.length : 0 });
+        res.json({ tasks: tasks || [] });
     } catch (error) {
         Logger.error('Failed to load tasks', error);
         res.status(500).json({ error: 'Failed to load tasks' });
     }
 });
 
-app.post('/api/tasks', authenticateToken, (req, res) => {
+app.post('/api/tasks', authenticateToken, async (req, res) => {
     try {
         const { tasks } = req.body;
         
@@ -169,7 +213,9 @@ app.post('/api/tasks', authenticateToken, (req, res) => {
             return res.status(400).json({ error: 'Tasks must be an array' });
         }
 
-        const success = dbManager.saveTasks(req.user.id, tasks);
+        Logger.log('Saving tasks for user', { userId: req.user.id, count: tasks.length });
+        const success = await dbManager.saveTasks(req.user.id, tasks);
+        Logger.log('Tasks save result', { userId: req.user.id, success });
         
         if (success) {
             res.json({ message: 'Tasks saved successfully' });
@@ -184,17 +230,19 @@ app.post('/api/tasks', authenticateToken, (req, res) => {
 
 // ====== NOTES ROUTES ======
 
-app.get('/api/notes', authenticateToken, (req, res) => {
+app.get('/api/notes', authenticateToken, async (req, res) => {
     try {
-        const notes = dbManager.loadNotes(req.user.id);
-        res.json({ notes });
+        Logger.log('Loading notes for user', { userId: req.user.id });
+        const notes = await dbManager.loadNotes(req.user.id);
+        Logger.log('Notes loaded', { userId: req.user.id, count: notes ? notes.length : 0 });
+        res.json({ notes: notes || [] });
     } catch (error) {
         Logger.error('Failed to load notes', error);
         res.status(500).json({ error: 'Failed to load notes' });
     }
 });
 
-app.post('/api/notes', authenticateToken, (req, res) => {
+app.post('/api/notes', authenticateToken, async (req, res) => {
     try {
         const { notes } = req.body;
         
@@ -202,7 +250,9 @@ app.post('/api/notes', authenticateToken, (req, res) => {
             return res.status(400).json({ error: 'Notes must be an array' });
         }
 
-        const success = dbManager.saveNotes(req.user.id, notes);
+        Logger.log('Saving notes for user', { userId: req.user.id, count: notes.length });
+        const success = await dbManager.saveNotes(req.user.id, notes);
+        Logger.log('Notes save result', { userId: req.user.id, success });
         
         if (success) {
             res.json({ message: 'Notes saved successfully' });
@@ -217,9 +267,11 @@ app.post('/api/notes', authenticateToken, (req, res) => {
 
 // ====== CONFIGURATION ROUTES ======
 
-app.get('/api/config', authenticateToken, (req, res) => {
+app.get('/api/config', authenticateToken, async (req, res) => {
     try {
-        const config = dbManager.loadConfiguration(req.user.id);
+        Logger.log('Loading configuration for user', { userId: req.user.id });
+        const config = await dbManager.loadConfiguration(req.user.id);
+        Logger.log('Configuration loaded', { userId: req.user.id, hasConfig: !!config });
         res.json({ config });
     } catch (error) {
         Logger.error('Failed to load configuration', error);
@@ -227,7 +279,7 @@ app.get('/api/config', authenticateToken, (req, res) => {
     }
 });
 
-app.post('/api/config', authenticateToken, (req, res) => {
+app.post('/api/config', authenticateToken, async (req, res) => {
     try {
         const { config } = req.body;
         
@@ -235,7 +287,9 @@ app.post('/api/config', authenticateToken, (req, res) => {
             return res.status(400).json({ error: 'Configuration data required' });
         }
 
-        const success = dbManager.saveConfiguration(req.user.id, config);
+        Logger.log('Saving configuration for user', { userId: req.user.id });
+        const success = await dbManager.saveConfiguration(req.user.id, config);
+        Logger.log('Configuration save result', { userId: req.user.id, success });
         
         if (success) {
             res.json({ message: 'Configuration saved successfully' });
@@ -250,16 +304,24 @@ app.post('/api/config', authenticateToken, (req, res) => {
 
 // ====== DATA MIGRATION ROUTES ======
 
-app.post('/api/migrate/import', authenticateToken, (req, res) => {
+app.post('/api/migrate/import', authenticateToken, async (req, res) => {
     try {
         const { tasks, notes, pendingTasks, configuration } = req.body;
+        
+        Logger.log('Import request received', { 
+            userId: req.user.id, 
+            tasksCount: tasks ? tasks.length : 0,
+            notesCount: notes ? notes.length : 0 
+        });
         
         let imported = 0;
         let errors = [];
 
         // Import tasks
         if (tasks && Array.isArray(tasks) && tasks.length > 0) {
-            const success = dbManager.saveTasks(req.user.id, tasks);
+            Logger.log('Importing tasks', { userId: req.user.id, count: tasks.length });
+            const success = await dbManager.saveTasks(req.user.id, tasks);
+            Logger.log('Tasks import result', { userId: req.user.id, success });
             if (success) {
                 imported += tasks.length;
             } else {
@@ -269,7 +331,9 @@ app.post('/api/migrate/import', authenticateToken, (req, res) => {
 
         // Import notes
         if (notes && Array.isArray(notes) && notes.length > 0) {
-            const success = dbManager.saveNotes(req.user.id, notes);
+            Logger.log('Importing notes', { userId: req.user.id, count: notes.length });
+            const success = await dbManager.saveNotes(req.user.id, notes);
+            Logger.log('Notes import result', { userId: req.user.id, success });
             if (success) {
                 imported += notes.length;
             } else {
@@ -279,11 +343,15 @@ app.post('/api/migrate/import', authenticateToken, (req, res) => {
 
         // Import configuration
         if (configuration) {
-            const success = dbManager.saveConfiguration(req.user.id, configuration);
+            Logger.log('Importing configuration', { userId: req.user.id });
+            const success = await dbManager.saveConfiguration(req.user.id, configuration);
+            Logger.log('Configuration import result', { userId: req.user.id, success });
             if (!success) {
                 errors.push('Failed to import configuration');
             }
         }
+
+        Logger.log('Import completed', { userId: req.user.id, imported, errors });
 
         if (errors.length > 0) {
             res.status(207).json({ // 207 Multi-Status

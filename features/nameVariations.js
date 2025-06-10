@@ -1,7 +1,6 @@
 // features/nameVariations.js - Fixed Name Variations Management
 
 import { CONFIG, Logger } from '../core/config.js';
-import { StorageManager } from '../core/storage.js';
 
 export class NameVariationsManager {
     constructor(appState, aiService) {
@@ -147,7 +146,7 @@ Do not return any other text or explanation, just the JSON array.`;
 
             // Update state and storage
             this.appState.updateOnboardingField('nameVariations', cleanVariations);
-            StorageManager.saveNameVariations(cleanVariations);
+            // Note: Name variations are now saved automatically through app state changes
 
             // Update AI service with new variations
             if (this.aiService) {

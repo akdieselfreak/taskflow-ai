@@ -5,6 +5,7 @@ import { OllamaService } from '../services/ollamaService.js';
 import { OpenAIService } from '../services/openaiService.js';
 import { OpenWebUIService } from '../services/openwebuiService.js';
 import { NameVariationsManager } from '../features/nameVariations.js';
+import { authManager } from '../core/authManager.js';
 
 export class OnboardingManager {
     constructor(appState, dependencies) {
@@ -12,18 +13,25 @@ export class OnboardingManager {
         this.notifications = dependencies.notifications;
         this.onComplete = dependencies.onComplete;
         
-        this.currentStep = 1;
+        // Start with authentication step (step 2) instead of name collection
+        this.currentStep = 2;
         this.selectedService = '';
         this.tempAIService = null;
         this.nameVariationsManager = null;
         
         this.setupOnboardingEvents();
+        
+        // Show authentication step immediately for logged out users
+        this.showStep(2);
     }
 
     setupOnboardingEvents() {
         // Make methods available globally for HTML onclick handlers
         window.nextStep = (fromStep) => this.nextStep(fromStep);
         window.previousStep = (fromStep) => this.previousStep(fromStep);
+        window.selectStorageMode = (mode) => this.selectStorageMode(mode);
+        window.createAccount = () => this.createAccount();
+        window.signInUser = () => this.signInUser();
         window.selectService = (service) => this.selectService(service);
         window.testOllamaConnection = () => this.testOllamaConnection();
         window.testOpenWebUIConnection = () => this.testOpenWebUIConnection();
@@ -35,18 +43,32 @@ export class OnboardingManager {
     async nextStep(fromStep) {
         try {
             Logger.log(`Moving from step ${fromStep} to next step`);
+            Logger.log(`Current selectedService: ${this.selectedService}`);
             
             if (fromStep === 1) {
                 if (await this.validateStep1()) {
-                    this.showStep(2);
+                    this.showStep(3);
                 }
             } else if (fromStep === 3) {
+                Logger.log(`Step 3 processing - selectedService: ${this.selectedService}`);
+                
                 if (this.selectedService === 'openai') {
+                    Logger.log('Processing OpenAI service...');
                     if (await this.validateOpenAIStep()) {
                         this.showStep(4);
                     }
+                } else if (this.selectedService === 'ollama') {
+                    Logger.log('Processing Ollama service...');
+                    // Ollama should test connection first
+                    await this.testOllamaConnection();
+                } else if (this.selectedService === 'openwebui') {
+                    Logger.log('Processing OpenWebUI service...');
+                    // OpenWebUI should test connection first
+                    await this.testOpenWebUIConnection();
+                } else {
+                    Logger.error(`Unknown or unset service: ${this.selectedService}`);
+                    this.notifications.showError('Please select an AI service first');
                 }
-                // For other services, connection test handles moving to next step
             } else if (fromStep === 4) {
                 if (await this.validateModelSelection()) {
                     this.showStep(5);
@@ -78,13 +100,19 @@ export class OnboardingManager {
     }
 
     async validateOpenAIStep() {
+        Logger.log('Validating OpenAI step...');
+        
         const apiKey = document.getElementById('openaiKey')?.value?.trim();
+        Logger.log('API Key found:', apiKey ? 'Yes' : 'No');
+        
         if (!apiKey) {
             this.notifications.showError('Please enter your OpenAI API key');
             return false;
         }
         
         const validation = OpenAIService.validateApiKey(apiKey);
+        Logger.log('API Key validation result:', validation);
+        
         if (!validation.valid) {
             this.notifications.showError(validation.message);
             return false;
@@ -93,8 +121,14 @@ export class OnboardingManager {
         const endpoint = document.getElementById('openaiEndpoint')?.value?.trim() || 
             CONFIG.DEFAULT_ENDPOINTS.openai;
         
+        Logger.log('Using endpoint:', endpoint);
+        Logger.log('Selected service:', this.selectedService);
+        
         this.appState.updateOnboardingField('apiKey', apiKey);
         this.appState.updateOnboardingField('endpoint', endpoint);
+        this.appState.updateOnboardingField('service', this.selectedService);
+        
+        Logger.log('OpenAI step validation passed');
         return true;
     }
 
@@ -128,7 +162,38 @@ export class OnboardingManager {
     }
 
     previousStep(fromStep) {
-        const stepMap = { 2: 1, 3: 2, 4: 3, 5: 4 };
+        Logger.log(`Going back from step ${fromStep}`);
+        Logger.log(`Current selectedService: ${this.selectedService}`);
+        
+        // Handle special step IDs
+        if (fromStep === '2-signin' || fromStep === '2-account') {
+            this.showStep(2);
+            return;
+        }
+        
+        // If we're on step 3 and have a selected service, we're on a service config step
+        // Go back to service selection and reset the selected service
+        if (fromStep === 3 && this.selectedService) {
+            Logger.log(`Resetting service selection and going back to step 3`);
+            this.selectedService = '';
+            this.appState.setSelectedService('');
+            this.showStep(3);
+            return;
+        }
+        
+        // If we're on a service-specific step (like step3-openwebui), go back to service selection
+        if (typeof fromStep === 'string' && fromStep.includes('-')) {
+            const baseStep = parseInt(fromStep.split('-')[0]);
+            if (baseStep === 3) {
+                // Reset selected service and go back to service selection
+                this.selectedService = '';
+                this.appState.setSelectedService('');
+                this.showStep(3);
+                return;
+            }
+        }
+        
+        const stepMap = { 3: 1, 4: 3, 5: 4 };
         if (stepMap[fromStep]) {
             this.showStep(stepMap[fromStep]);
         }
@@ -143,17 +208,24 @@ export class OnboardingManager {
                 el.style.display = 'none';
             });
             
-            // Show current step - for now, we'll work with the existing structure
-            // In a full refactor, we'd generate these dynamically
-            const stepElements = {
-                1: 'step1',
-                2: 'step2',
-                3: this.getStep3ElementId(),
-                4: this.getStep4ElementId(),
-                5: 'step5'
-            };
+            // Handle special step IDs
+            let elementId;
+            if (step === '2-signin') {
+                elementId = 'step2-signin';
+            } else if (step === '2-account') {
+                elementId = 'step2-account';
+            } else {
+                // Show current step - for now, we'll work with the existing structure
+                const stepElements = {
+                    1: 'step1',
+                    2: 'step2',
+                    3: this.getStep3ElementId(),
+                    4: this.getStep4ElementId(),
+                    5: 'step5'
+                };
+                elementId = stepElements[step];
+            }
             
-            const elementId = stepElements[step];
             const element = document.getElementById(elementId);
             if (element) {
                 element.style.display = 'block';
@@ -172,11 +244,17 @@ export class OnboardingManager {
     }
 
     getStep3ElementId() {
+        // Step 3 should always be the AI service selection step
+        // Only show service-specific steps after a service is selected
+        if (!this.selectedService) {
+            return 'step3'; // AI service selection
+        }
+        
         switch(this.selectedService) {
             case 'ollama': return 'step3-ollama';
             case 'openai': return 'step3-openai';
             case 'openwebui': return 'step3-openwebui';
-            default: return 'step3-openai';
+            default: return 'step3'; // Fallback to service selection
         }
     }
 
@@ -197,6 +275,9 @@ export class OnboardingManager {
         // Set default endpoint
         const endpoint = CONFIG.DEFAULT_ENDPOINTS[service] || CONFIG.DEFAULT_ENDPOINTS.openai;
         this.appState.updateOnboardingField('endpoint', endpoint);
+        this.appState.updateOnboardingField('service', service);
+        
+        Logger.log(`Service selection complete - selectedService: ${this.selectedService}, endpoint: ${endpoint}`);
         
         this.showStep(3);
     }
@@ -530,6 +611,231 @@ export class OnboardingManager {
         }
     }
 
+    // ====== AUTHENTICATION METHODS ======
+
+    selectStorageMode(mode) {
+        Logger.log(`Storage mode selected: ${mode}`);
+        this.appState.updateOnboardingField('storageMode', mode);
+        
+        if (mode === 'signin') {
+            this.showStep('2-signin');
+        } else if (mode === 'account') {
+            this.showStep('2-account');
+        }
+        // Guest mode removed - authentication is now required
+    }
+
+    async createAccount() {
+        const username = document.getElementById('accountUsername')?.value?.trim();
+        const email = document.getElementById('accountEmail')?.value?.trim();
+        const password = document.getElementById('accountPassword')?.value?.trim();
+        const confirmPassword = document.getElementById('accountPasswordConfirm')?.value?.trim();
+        const statusDiv = document.getElementById('accountCreationStatus');
+
+        // Clear previous status
+        if (statusDiv) {
+            statusDiv.innerHTML = '';
+        }
+
+        // Validation
+        if (!username) {
+            this.notifications.showError('Username is required');
+            return;
+        }
+
+        if (username.length < 3) {
+            this.notifications.showError('Username must be at least 3 characters long');
+            return;
+        }
+
+        if (!password) {
+            this.notifications.showError('Password is required');
+            return;
+        }
+
+        if (password.length < 6) {
+            this.notifications.showError('Password must be at least 6 characters long');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            this.notifications.showError('Passwords do not match');
+            return;
+        }
+
+        // Show loading state
+        const createBtn = document.querySelector('#step2-account .btn-primary');
+        const originalText = createBtn?.textContent;
+        if (createBtn) {
+            createBtn.innerHTML = '<span class="loading"></span> Creating Account...';
+            createBtn.disabled = true;
+        }
+
+        try {
+            // Use centralized auth manager for registration
+            const registerResult = await authManager.register(username, email, password);
+
+            if (registerResult.success) {
+                // Account created successfully, now log in
+                const loginResult = await authManager.login(username, password);
+
+                if (loginResult.success) {
+                    // Store authentication data in onboarding state
+                    this.appState.updateOnboardingField('isAuthenticated', true);
+                    this.appState.updateOnboardingField('authToken', loginResult.token);
+                    this.appState.updateOnboardingField('user', loginResult.user);
+                    
+                    // For new accounts, use username as default display name
+                    this.appState.updateOnboardingField('userName', loginResult.user.username);
+                    
+                    // IMPORTANT: Update the centralized AuthManager with the new auth data
+                    authManager.setAuthData(loginResult.token, loginResult.user);
+                    
+                    if (statusDiv) {
+                        statusDiv.innerHTML = '<div class="success">✓ Account created and logged in successfully!</div>';
+                    }
+
+                    Logger.log('Account created and user logged in', { username });
+                    
+                    // For new accounts, go to name collection step
+                    setTimeout(() => {
+                        this.showStep(1);
+                    }, 1500);
+                } else {
+                    throw new Error(loginResult.error || 'Login failed after account creation');
+                }
+            } else {
+                throw new Error(registerResult.error || 'Account creation failed');
+            }
+        } catch (error) {
+            Logger.error('Account creation failed', error);
+            if (statusDiv) {
+                statusDiv.innerHTML = `<div class="error">❌ ${error.message}</div>`;
+            }
+            this.notifications.showError(`Account creation failed: ${error.message}`);
+        } finally {
+            // Restore button state
+            if (createBtn) {
+                createBtn.textContent = originalText;
+                createBtn.disabled = false;
+            }
+        }
+    }
+
+    async signInUser() {
+        const username = document.getElementById('signinUsername')?.value?.trim();
+        const password = document.getElementById('signinPassword')?.value?.trim();
+        const statusDiv = document.getElementById('signInStatus');
+
+        // Clear previous status
+        if (statusDiv) {
+            statusDiv.innerHTML = '';
+        }
+
+        // Validation
+        if (!username) {
+            this.notifications.showError('Username or email is required');
+            return;
+        }
+
+        if (!password) {
+            this.notifications.showError('Password is required');
+            return;
+        }
+
+        // Show loading state
+        const signInBtn = document.querySelector('#step2-signin .btn-primary');
+        const originalText = signInBtn?.textContent;
+        if (signInBtn) {
+            signInBtn.innerHTML = '<span class="loading"></span> Signing In...';
+            signInBtn.disabled = true;
+        }
+
+        try {
+            // Use centralized auth manager for login
+            const loginResult = await authManager.login(username, password);
+
+            if (loginResult.success) {
+                // Store authentication data in onboarding state
+                this.appState.updateOnboardingField('isAuthenticated', true);
+                this.appState.updateOnboardingField('authToken', loginResult.token);
+                this.appState.updateOnboardingField('user', loginResult.user);
+                
+                // For existing users, use their username as the display name
+                this.appState.updateOnboardingField('userName', loginResult.user.username);
+                
+                // IMPORTANT: Update the centralized AuthManager with the new auth data
+                authManager.setAuthData(loginResult.token, loginResult.user);
+                
+                if (statusDiv) {
+                    statusDiv.innerHTML = '<div class="success">✓ Signed in successfully!</div>';
+                }
+
+                Logger.log('User signed in successfully', { username: loginResult.user.username });
+                
+                // Check if user has existing configuration
+                setTimeout(async () => {
+                    try {
+                        // Load configuration from database
+                        const response = await fetch('/api/config', {
+                            headers: {
+                                'Authorization': `Bearer ${loginResult.token}`,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            
+                            if (data.config && this.hasValidConfiguration(data.config)) {
+                                Logger.log('Found existing valid configuration, skipping onboarding', data.config);
+                                
+                                // Merge user data with existing config
+                                const completeConfig = {
+                                    ...data.config,
+                                    userName: data.config.userName || loginResult.user.username,
+                                    isAuthenticated: true,
+                                    authToken: loginResult.token,
+                                    user: loginResult.user,
+                                    hasCompletedOnboarding: true
+                                };
+                                
+                                // Complete onboarding with existing config
+                                if (this.onComplete) {
+                                    await this.onComplete(completeConfig);
+                                }
+                                return;
+                            }
+                        }
+                        
+                        // No valid config found, go to name collection first, then AI service selection
+                        Logger.log('No valid configuration found, continuing with onboarding (name collection for existing user)');
+                        this.showStep(1);
+                        
+                    } catch (error) {
+                        Logger.error('Failed to check existing configuration', error);
+                        // Continue with onboarding on error, skip name collection
+                        this.showStep(3);
+                    }
+                }, 1500);
+            } else {
+                throw new Error(loginResult.error || 'Sign in failed');
+            }
+        } catch (error) {
+            Logger.error('Sign in failed', error);
+            if (statusDiv) {
+                statusDiv.innerHTML = `<div class="error">❌ ${error.message}</div>`;
+            }
+            this.notifications.showError(`Sign in failed: ${error.message}`);
+        } finally {
+            // Restore button state
+            if (signInBtn) {
+                signInBtn.textContent = originalText;
+                signInBtn.disabled = false;
+            }
+        }
+    }
+
     async completeOnboarding() {
         try {
             const config = { ...this.appState.onboardingData };
@@ -545,6 +851,46 @@ export class OnboardingManager {
             Logger.error('Failed to complete onboarding', error);
             this.notifications.showError('Failed to complete setup. Please try again.');
         }
+    }
+
+    // Configuration validation method
+    hasValidConfiguration(config) {
+        if (!config) {
+            Logger.log('No configuration found');
+            return false;
+        }
+
+        // Check for required AI configuration fields
+        const requiredFields = ['service', 'endpoint', 'model'];
+        const hasRequiredFields = requiredFields.every(field => {
+            const hasField = config[field] && config[field].trim() !== '';
+            if (!hasField) {
+                Logger.log(`Missing required field: ${field}`);
+            }
+            return hasField;
+        });
+
+        if (!hasRequiredFields) {
+            Logger.log('Configuration missing required fields');
+            return false;
+        }
+
+        // Check service-specific requirements
+        if (config.service === 'openai' || config.service === 'openwebui') {
+            if (!config.apiKey || config.apiKey.trim() === '') {
+                Logger.log('OpenAI/OpenWebUI service requires API key');
+                return false;
+            }
+        }
+
+        Logger.log('Valid AI configuration found', {
+            service: config.service,
+            model: config.model,
+            hasApiKey: !!(config.apiKey),
+            endpoint: config.endpoint
+        });
+
+        return true;
     }
 
     // Utility methods
