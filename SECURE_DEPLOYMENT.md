@@ -243,3 +243,46 @@ cd /opt/taskflow-ai
 sudo git pull
 sudo npm install
 sudo systemctl restart taskflow.service
+```
+
+## Uninstalling the Application
+
+If you need to completely remove TaskFlow AI from your server, you can use the provided uninstall script:
+
+1. **Download the uninstall script**
+
+   ```bash
+   wget https://raw.githubusercontent.com/akdieselfreak/taskflow-ai/main/uninstall-taskflow.sh
+   chmod +x uninstall-taskflow.sh
+   ```
+
+2. **Run the uninstall script with sudo**
+
+   Basic usage:
+   ```bash
+   sudo ./uninstall-taskflow.sh
+   ```
+
+   To keep your data:
+   ```bash
+   sudo ./uninstall-taskflow.sh --keep-data
+   ```
+
+   Available options:
+   ```
+   -d, --dir DIRECTORY     Installation directory to remove (default: /opt/taskflow-ai)
+   -p, --port PORT         Port used by the application (default: 3001)
+   -k, --keep-data         Keep the database and user data
+   -h, --help              Show this help message
+   ```
+
+3. **What gets removed**
+
+   The uninstall script will remove:
+   - The TaskFlow AI application files
+   - The systemd service
+   - Nginx configuration (if present)
+   - SSL certificates (if present)
+   - Firewall rules
+
+   It will also give you the option to remove Node.js if it was installed by the deployment script.
