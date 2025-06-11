@@ -633,6 +633,25 @@ export class ModalManager {
                         </button>
                     </div>
                 </div>
+
+                <h3>Chat AI Prompt</h3>
+                <div class="setting-item">
+                    <label for="chatSystemPrompt">Chat System Prompt</label>
+                    <p class="setting-description">Customize how AI responds in chat conversations</p>
+                    <textarea id="chatSystemPrompt" class="system-prompt-textarea" 
+                              placeholder="Enter chat system prompt...">${this.getChatPrompt()}</textarea>
+                    <div class="setting-hint">
+                        <strong>💡 Tip:</strong> Use {USER_NAME} and {NAME_VARIATIONS} as placeholders. This prompt sets the personality and capabilities of the chat assistant.
+                    </div>
+                    <div class="prompt-actions">
+                        <button class="btn btn-secondary" onclick="taskFlowApp?.resetChatPrompt?.()">
+                            Reset to Default
+                        </button>
+                        <button class="btn btn-primary" onclick="taskFlowApp?.saveChatPrompt?.()">
+                            Save Prompt
+                        </button>
+                    </div>
+                </div>
                 
                 <h3>Application Settings</h3>
                 <div class="setting-item">
@@ -803,6 +822,14 @@ export class ModalManager {
                 return '';
         }
     }
+    
+    getChatPrompt() {
+        const onboardingData = this.appState.onboardingData;
+        // Get the chat system prompt from onboarding data or use default from ChatManager
+        const chatManager = window.taskFlowApp?.chatManager;
+        const defaultPrompt = chatManager ? chatManager.defaultSystemPrompt : '';
+        return onboardingData.chatSystemPrompt || defaultPrompt;
+    }
 
     // Global functions that will be attached to the app instance
     setupGlobalModalFunctions(app) {
@@ -812,6 +839,31 @@ export class ModalManager {
 
         app.updateExtractedTask = (index, field, value) => {
             this.taskExtraction.updateExtractedTask(index, field, value);
+        };
+        
+        app.saveChatPrompt = () => {
+            const prompt = document.getElementById('chatSystemPrompt')?.value?.trim();
+            if (!prompt) {
+                this.notifications.showError('Please enter a valid prompt');
+                return;
+            }
+            
+            // Save chat system prompt to app state
+            this.appState.updateOnboardingField('chatSystemPrompt', prompt);
+            this.notifications.showSuccess('Chat system prompt saved successfully!');
+            
+            // Update chat manager if it exists
+            if (app.chatManager) {
+                app.chatManager.updateSystemPrompt(prompt);
+            }
+        };
+        
+        app.resetChatPrompt = () => {
+            const textarea = document.getElementById('chatSystemPrompt');
+            if (textarea && app.chatManager) {
+                textarea.value = app.chatManager.defaultSystemPrompt;
+                this.notifications.showSuccess('Reset to default chat prompt');
+            }
         };
 
         app.saveNameVariations = () => {

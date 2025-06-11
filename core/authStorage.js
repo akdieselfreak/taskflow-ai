@@ -56,7 +56,7 @@ export class AuthStorageManager {
     async saveConfigurationToDatabase(onboardingData) {
         return await this.throttledRequest(async () => {
             try {
-                const response = await fetch('/api/config', {
+                const response = await fetch('http://localhost:3001/api/config', {
                     method: 'POST',
                     headers: authManager.getAuthHeaders(),
                     body: JSON.stringify({ config: onboardingData })
@@ -78,7 +78,7 @@ export class AuthStorageManager {
 
     async loadConfigurationFromDatabase() {
         try {
-            const response = await fetch('/api/config', {
+            const response = await fetch('http://localhost:3001/api/config', {
                 headers: authManager.getAuthHeaders()
             });
 
@@ -122,7 +122,7 @@ export class AuthStorageManager {
     async saveTasksToDatabase(tasks) {
         return await this.throttledRequest(async () => {
             try {
-                const response = await fetch('/api/tasks', {
+                const response = await fetch('http://localhost:3001/api/tasks', {
                     method: 'POST',
                     headers: authManager.getAuthHeaders(),
                     body: JSON.stringify({ tasks })
@@ -144,7 +144,7 @@ export class AuthStorageManager {
 
     async loadTasksFromDatabase() {
         try {
-            const response = await fetch('/api/tasks', {
+            const response = await fetch('http://localhost:3001/api/tasks', {
                 headers: authManager.getAuthHeaders()
             });
 
@@ -188,7 +188,7 @@ export class AuthStorageManager {
     async saveNotesToDatabase(notes) {
         return await this.throttledRequest(async () => {
             try {
-                const response = await fetch('/api/notes', {
+                const response = await fetch('http://localhost:3001/api/notes', {
                     method: 'POST',
                     headers: authManager.getAuthHeaders(),
                     body: JSON.stringify({ notes })
@@ -210,7 +210,7 @@ export class AuthStorageManager {
 
     async loadNotesFromDatabase() {
         try {
-            const response = await fetch('/api/notes', {
+            const response = await fetch('http://localhost:3001/api/notes', {
                 headers: authManager.getAuthHeaders()
             });
 
@@ -224,6 +224,72 @@ export class AuthStorageManager {
             }
         } catch (error) {
             Logger.error('[AuthStorage] Failed to load notes', error);
+            throw error;
+        }
+    }
+
+    // ====== CHAT METHODS ======
+
+    async saveChats(chats) {
+        this.ensureAuthenticated();
+        
+        if (!this.isOnline) {
+            this.queueForSync('chats', chats);
+            throw new Error('Chats queued for sync when online');
+        }
+        
+        return await this.saveChatsToDatabase(chats);
+    }
+
+    async loadChats() {
+        this.ensureAuthenticated();
+        
+        if (!this.isOnline) {
+            throw new Error('Internet connection required to load chats');
+        }
+        
+        return await this.loadChatsFromDatabase();
+    }
+
+    async saveChatsToDatabase(chats) {
+        return await this.throttledRequest(async () => {
+            try {
+                const response = await fetch('http://localhost:3001/api/chats', {
+                    method: 'POST',
+                    headers: authManager.getAuthHeaders(),
+                    body: JSON.stringify({ chats })
+                });
+
+                if (response.ok) {
+                    Logger.log('[AuthStorage] Chats saved to database');
+                    return true;
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to save chats');
+                }
+            } catch (error) {
+                Logger.error('[AuthStorage] Failed to save chats', error);
+                throw error;
+            }
+        });
+    }
+
+    async loadChatsFromDatabase() {
+        try {
+            const response = await fetch('http://localhost:3001/api/chats', {
+                headers: authManager.getAuthHeaders()
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                Logger.log('[AuthStorage] Chats loaded from database');
+                return data.chats || [];
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to load chats');
+            }
+        } catch (error) {
+            Logger.error('[AuthStorage] Failed to load chats', error);
             throw error;
         }
     }
@@ -296,6 +362,8 @@ export class AuthStorageManager {
                     await this.saveNotesToDatabase(item.data);
                 } else if (item.type === 'config') {
                     await this.saveConfigurationToDatabase(item.data);
+                } else if (item.type === 'chats') {
+                    await this.saveChatsToDatabase(item.data);
                 }
                 Logger.log(`[AuthStorage] Synced ${item.type} from queue`);
             } catch (error) {

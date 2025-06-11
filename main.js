@@ -17,6 +17,7 @@ import { NameVariationsManager } from './features/nameVariations.js';
 import { TaskExtractionManager } from './features/taskExtraction.js';
 import { DataManager } from './features/dataManager.js';
 import { NotesManager } from './features/notesManager.js';
+import { ChatManager } from './features/chatManager.js';
 
 // UI Components
 import { OnboardingManager } from './ui/onboarding.js';
@@ -27,6 +28,7 @@ import { DataManagerUI, enhanceModalManagerWithDataManagement } from './ui/dataM
 import { NotesRenderer } from './ui/notesRenderer.js';
 import { NotesModalManager } from './ui/notesModals.js';
 import { AuthUI } from './ui/authUI.js';
+import { ChatUI } from './ui/chatUI.js';
 
 class TaskFlowApp {
     constructor() {
@@ -50,6 +52,8 @@ class TaskFlowApp {
         this.notesManager = null;
         this.notesRenderer = null;
         this.notesModalManager = null;
+        this.chatManager = null;
+        this.chatUI = null;
         this.currentTab = 'tasks';
         
         // Performance & Accessibility features (integrated)
@@ -108,6 +112,9 @@ class TaskFlowApp {
                 if (event.detail.notes) {
                     this.appState.setNotes(event.detail.notes);
                 }
+                if (event.detail.chats) {
+                    this.appState.setChats(event.detail.chats);
+                }
                 
                 // Refresh UI
                 if (this.taskRenderer) {
@@ -115,6 +122,9 @@ class TaskFlowApp {
                 }
                 if (this.notesRenderer) {
                     this.notesRenderer.refresh();
+                }
+                if (this.chatUI) {
+                    this.chatUI.refreshChatList();
                 }
                 
                 // Show notification
@@ -177,6 +187,40 @@ class TaskFlowApp {
             this.authUI.currentUser = authManager.getCurrentUser();
             this.authUI.isLoggedIn = true;
             
+            // Update the UI to reflect authenticated state
+            const accountStatusElement = document.querySelector('.account-status');
+            if (accountStatusElement) {
+                accountStatusElement.classList.remove('guest');
+                accountStatusElement.classList.add('authenticated');
+            }
+            
+            // Hide all sign in buttons in the UI
+            document.querySelectorAll('.account-actions .btn-primary').forEach(button => {
+                if (button.textContent.includes('Sign In') || button.textContent.includes('Create Account')) {
+                    button.style.display = 'none';
+                }
+            });
+            
+            // Update header to show user's name
+            const userGreeting = document.getElementById('userGreeting');
+            if (userGreeting && this.appState.onboardingData && this.appState.onboardingData.userName) {
+                userGreeting.textContent = this.appState.onboardingData.userName;
+            } else if (userGreeting && this.authUI.currentUser) {
+                userGreeting.textContent = this.authUI.currentUser.username || 'User';
+            }
+            
+            // Hide onboarding overlay and show main app
+            const onboardingOverlay = document.getElementById('onboardingOverlay');
+            const mainApp = document.getElementById('mainApp');
+            
+            if (onboardingOverlay) {
+                onboardingOverlay.style.display = 'none';
+            }
+            
+            if (mainApp) {
+                mainApp.style.display = 'block';
+            }
+            
             Logger.log('AuthUI synced with centralized auth manager', {
                 user: this.authUI.currentUser,
                 isLoggedIn: this.authUI.isLoggedIn
@@ -212,6 +256,13 @@ class TaskFlowApp {
             this.notifications
         );
         
+        // Initialize Chat Manager
+        this.chatManager = new ChatManager(
+            this.appState,
+            this.aiService,
+            this.notifications
+        );
+        
         // Initialize UI managers
         this.modalManager = new ModalManager(this.appState, {
             taskExtraction: this.taskExtractionManager,
@@ -229,18 +280,23 @@ class TaskFlowApp {
         this.notesRenderer = new NotesRenderer(this.appState, this.notesManager);
         this.notesModalManager = new NotesModalManager(this.appState, this.notesManager, this.notifications);
         
+        // Initialize Chat UI
+        this.chatUI = new ChatUI(this.appState, this.chatManager, this.notifications);
+        
         // Setup performance monitoring for task renderer
         this.setupPerformanceMonitoring();
         
         // Setup global modal functions
         this.modalManager.setupGlobalModalFunctions(this);
         
-        // Load tasks, notes, and pending tasks
+        // Load tasks, notes, chats, and pending tasks
         const tasks = await this.authStorage.loadTasks();
         const notes = await this.authStorage.loadNotes();
+        const chats = await this.authStorage.loadChats();
         const pendingTasks = await this.authStorage.loadPendingTasks();
         this.appState.setTasks(tasks);
         this.appState.setNotes(notes);
+        this.appState.setChats(chats);
         this.appState.setPendingTasks(pendingTasks);
         
         // Setup auto-save
@@ -249,8 +305,21 @@ class TaskFlowApp {
         // Show main app
         this.showMainApp();
         
-        // Setup global functions now that all managers are initialized
-        setupGlobalFunctions(this);
+    // Setup global functions now that all managers are initialized
+    setupGlobalFunctions(this);
+    
+    // Make sure the chat system prompt functions are available
+    window.saveChatPrompt = () => {
+        if (this.modalManager) {
+            this.modalManager.saveChatPrompt();
+        }
+    };
+    
+    window.resetChatPrompt = () => {
+        if (this.modalManager) {
+            this.modalManager.resetChatPrompt();
+        }
+    };
         
         const initTime = performance.now() - startTime;
         Logger.log(`Main app initialized in ${initTime.toFixed(2)}ms`, this.appState.getDebugInfo());
@@ -306,7 +375,8 @@ class TaskFlowApp {
                 ...(config.systemPrompt && { systemPrompt: config.systemPrompt }),
                 ...(config.notesTitlePrompt && { notesTitlePrompt: config.notesTitlePrompt }),
                 ...(config.notesSummaryPrompt && { notesSummaryPrompt: config.notesSummaryPrompt }),
-                ...(config.notesTaskExtractionPrompt && { notesTaskExtractionPrompt: config.notesTaskExtractionPrompt })
+                ...(config.notesTaskExtractionPrompt && { notesTaskExtractionPrompt: config.notesTaskExtractionPrompt }),
+                ...(config.chatSystemPrompt && { chatSystemPrompt: config.chatSystemPrompt })
             };
             
             Logger.log('Saving configuration to database', configToSave);
@@ -341,6 +411,11 @@ class TaskFlowApp {
         if (this.taskRenderer) {
             this.taskRenderer.renderAll();
         }
+        
+        // Initialize chat UI
+        if (this.chatUI) {
+            this.chatUI.initialize();
+        }
     }
 
     showOnboarding() {
@@ -359,6 +434,7 @@ class TaskFlowApp {
                 if (authManager.isAuthenticated()) {
                     await this.authStorage.saveTasks(this.appState.tasks);
                     await this.authStorage.saveNotes(this.appState.notes);
+                    await this.authStorage.saveChats(this.appState.chats);
                     await this.authStorage.savePendingTasks(this.appState.pendingTasks);
                 }
             } catch (error) {
@@ -394,6 +470,19 @@ class TaskFlowApp {
                 }
             } catch (error) {
                 Logger.error('Failed to save notes on change', error);
+            }
+        });
+
+        this.appState.addEventListener('chatsChanged', async () => {
+            if (this.chatUI) {
+                this.chatUI.refreshChatList();
+            }
+            try {
+                if (authManager.isAuthenticated()) {
+                    await this.authStorage.saveChats(this.appState.chats);
+                }
+            } catch (error) {
+                Logger.error('Failed to save chats on change', error);
             }
         });
 
@@ -446,6 +535,7 @@ class TaskFlowApp {
                 if (authManager.isAuthenticated()) {
                     await this.authStorage.saveTasks(this.appState.tasks);
                     await this.authStorage.saveNotes(this.appState.notes);
+                    await this.authStorage.saveChats(this.appState.chats);
                 }
             } catch (error) {
                 Logger.error('Failed to save on beforeunload', error);
@@ -459,6 +549,7 @@ class TaskFlowApp {
                 try {
                     if (authManager.isAuthenticated()) {
                         await this.authStorage.saveTasks(this.appState.tasks);
+                        await this.authStorage.saveChats(this.appState.chats);
                     }
                 } catch (error) {
                     Logger.error('Failed to save on visibility change', error);
@@ -515,6 +606,7 @@ class TaskFlowApp {
                 ? (aiTimes.reduce((a, b) => a + b, 0) / aiTimes.length).toFixed(2)
                 : 0,
             totalTasks: this.appState.tasks.length,
+            totalChats: this.appState.chats.length,
             memoryUsage: performance.memory ? {
                 used: (performance.memory.usedJSHeapSize / 1048576).toFixed(2) + ' MB',
                 total: (performance.memory.totalJSHeapSize / 1048576).toFixed(2) + ' MB'
@@ -818,1577 +910,504 @@ class TaskFlowApp {
             '? - Show shortcuts'
         ];
         
-        alert('Keyboard Shortcuts:\n\n' + shortcuts.join('\n'));
+        this.notifications.showInfo(
+            'Keyboard Shortcuts:\n' + shortcuts.join('\n'),
+            { duration: 10000 }
+        );
     }
 
     setupKeyboardShortcuts() {
         document.addEventListener('keydown', (event) => {
-            // Only handle shortcuts when no modal is open
-            if (document.querySelector('.modal-overlay.active')) return;
-            
             if (event.ctrlKey || event.metaKey) {
                 switch (event.key) {
                     case 'q':
                         event.preventDefault();
-                        this.modalManager?.openModal('quick');
+                        this.openModal('quick');
                         break;
                     case 'e':
                         event.preventDefault();
-                        this.modalManager?.openModal('ai');
+                        this.openModal('ai');
                         break;
                     case ',':
                         event.preventDefault();
-                        this.modalManager?.openModal('settings');
+                        this.openSettings();
                         break;
                 }
             } else if (event.key === 'Escape') {
-                // Close any open modal
-                const activeModal = document.querySelector('.modal-overlay.active');
-                if (activeModal) {
-                    const modalType = activeModal.id.replace('ModalOverlay', '').replace('Modal', '');
-                    this.modalManager?.closeModal(modalType);
-                }
+                // Close any open modals
+                this.closeAllModals();
             }
         });
-        
-        Logger.log('Keyboard shortcuts setup completed');
+    }
+
+    closeAllModals() {
+        const modals = document.querySelectorAll('.modal-overlay');
+        modals.forEach(modal => {
+            modal.style.display = 'none';
+        });
     }
 
     // ============================================
-    // TASK MANAGEMENT METHODS
+    // AUTH STATE MANAGEMENT
     // ============================================
 
-    // Public API methods for HTML onclick handlers
+    handleAuthStateChange(isLoggedIn, user) {
+        if (isLoggedIn) {
+            Logger.log('User logged in, initializing app', { user });
+            // User logged in - load their configuration
+            this.loadUserConfiguration();
+        } else {
+            Logger.log('User logged out, showing onboarding');
+            // User logged out - show authentication
+            this.handleLogout();
+        }
+    }
+
+    async loadUserConfiguration() {
+        try {
+            const config = await this.authStorage.loadConfiguration();
+            
+            if (config && (config.hasCompletedOnboarding || this.hasValidAIConfiguration(config))) {
+                // User has valid configuration
+                if (!config.hasCompletedOnboarding) {
+                    config.hasCompletedOnboarding = true;
+                    await this.authStorage.saveConfiguration(config);
+                }
+                Logger.log('Loading main app with user configuration');
+                await this.initializeMainApp(config);
+            } else {
+                Logger.log('No valid configuration found, showing onboarding for authenticated user');
+                this.initializeOnboarding();
+            }
+        } catch (error) {
+            Logger.error('Failed to load user configuration', error);
+            this.initializeOnboarding();
+        }
+    }
+
+    handleLogout() {
+        // Clear any auto-save intervals
+        if (this.autoSaveInterval) {
+            clearInterval(this.autoSaveInterval);
+            this.autoSaveInterval = null;
+        }
+        
+        // Reset app state
+        this.appState = new AppState();
+        
+        // Clear managers
+        this.aiService = null;
+        this.nameVariationsManager = null;
+        this.taskExtractionManager = null;
+        this.modalManager = null;
+        this.taskRenderer = null;
+        this.dataManager = null;
+        this.notesManager = null;
+        this.notesRenderer = null;
+        this.notesModalManager = null;
+        this.chatManager = null;
+        this.chatUI = null;
+        
+        // Show onboarding
+        this.showOnboarding();
+        this.initializeOnboarding();
+    }
+
+    hasValidAIConfiguration(config) {
+        return config && 
+               config.service && 
+               config.model && 
+               config.userName &&
+               (config.service === 'ollama' || config.apiKey);
+    }
+
+    resetOnboarding() {
+        // Clear onboarding data
+        this.appState.setOnboardingData({
+            userName: '',
+            service: '',
+            endpoint: '',
+            apiKey: '',
+            model: '',
+            nameVariations: []
+        });
+        
+        // Show onboarding
+        this.showOnboarding();
+        this.initializeOnboarding();
+    }
+
+    // ============================================
+    // UTILITY METHODS
+    // ============================================
+
     openModal(type, taskId = null) {
         if (this.modalManager) {
             this.modalManager.openModal(type, taskId);
         }
     }
 
-    closeModal(type) {
-        if (this.modalManager) {
-            this.modalManager.closeModal(type);
-        }
-    }
-
-    async saveQuickTask(event) {
-        event.preventDefault();
-        
-        try {
-            const formData = new FormData(event.target);
-            const task = {
-                id: this.appState.generateTaskId(),
-                name: formData.get('quickTaskName')?.trim(),
-                description: formData.get('quickTaskDescription')?.trim() || '',
-                notes: formData.get('quickTaskNotes')?.trim() || '',
-                date: new Date().toISOString().split('T')[0],
-                createdAt: new Date().toISOString(),
-                type: 'quick',
-                completed: false,
-                postponed: false
-            };
-
-            if (!task.name) {
-                this.notifications.showError('Task name is required');
-                return;
-            }
-
-            this.appState.addTask(task);
-            this.modalManager?.closeModal('quick');
-            this.notifications.showSuccess('Task created successfully!');
-            
-            // Highlight new task
-            setTimeout(() => {
-                this.taskRenderer?.highlightTask?.(task.id);
-            }, 100);
-            
-            Logger.log('Quick task created', { taskId: task.id });
-        } catch (error) {
-            Logger.error('Failed to save quick task', error);
-            this.notifications.showError('Failed to create task. Please try again.');
-        }
-    }
-
-    async extractTask(event) {
-        event.preventDefault();
-        
-        const startTime = performance.now();
-        const extractButton = document.getElementById('extractButtonText');
-        const originalText = extractButton.textContent;
-        extractButton.innerHTML = '<span class="loading"></span> Extracting...';
-        
-        try {
-            const formData = new FormData(event.target);
-            const inputText = formData.get('aiTaskInput')?.trim();
-            
-            const validation = this.taskExtractionManager.validateExtractionInput(inputText);
-            if (!validation.valid) {
-                this.notifications.showError(validation.message);
-                return;
-            }
-
-            const result = await this.taskExtractionManager.extractTasksFromText(inputText);
-            
-            if (this.modalManager) {
-                this.modalManager.showExtractedTasksPreview(result.tasks);
-            }
-            
-            // Track AI request performance
-            const requestTime = performance.now() - startTime;
-            this.performanceMetrics.aiRequestTimes.push(requestTime);
-            
-            Logger.log(`AI task extraction completed in ${requestTime.toFixed(2)}ms`);
-            
-        } catch (error) {
-            Logger.error('AI task extraction failed', error);
-            this.notifications.showError(`Error: ${error.message}`);
-            this.showAIFallbackOption();
-        } finally {
-            extractButton.textContent = originalText;
-        }
-    }
-
-    saveExtractedTasks() {
-        try {
-            const result = this.taskExtractionManager.saveExtractedTasks();
-            this.modalManager?.closeModal('ai');
-            this.notifications.showSuccess(result.message);
-            
-            Logger.log('AI tasks saved', { taskCount: result.count });
-        } catch (error) {
-            Logger.error('Failed to save extracted tasks', error);
-            this.notifications.showError('Failed to save tasks. Please try again.');
-        }
-    }
-
-    removeExtractedTask(index) {
-        try {
-            this.taskExtractionManager.removeExtractedTask(index);
-            this.notifications.showSuccess('Task removed');
-        } catch (error) {
-            this.notifications.showError(error.message);
-        }
-    }
-
-    resetAiModal() {
-        this.taskExtractionManager?.clearExtractedTasks();
-        if (this.modalManager) {
-            this.modalManager.resetAiModal();
-        }
-    }
-
-    toggleTaskComplete(taskId, event) {
-        event?.stopPropagation();
-        
-        try {
-            const task = this.appState.getTask(taskId);
-            if (!task) {
-                this.notifications.showError('Task not found');
-                return;
-            }
-            
-            const updates = {
-                completed: !task.completed,
-                modifiedAt: new Date().toISOString()
-            };
-            
-            if (updates.completed) {
-                updates.completedAt = new Date().toISOString();
-                updates.postponed = false;
-                delete updates.postponedAt;
-                this.notifications.showSuccess('Task completed! 🎉');
-            } else {
-                delete updates.completedAt;
-                this.notifications.showSuccess('Task reopened');
-            }
-            
-            this.appState.updateTask(taskId, updates);
-            
-            Logger.log('Task completion toggled', { taskId, completed: updates.completed });
-        } catch (error) {
-            Logger.error('Failed to toggle task completion', error);
-            this.notifications.showError('Failed to update task. Please try again.');
-        }
-    }
-
-    toggleCompletedTasks() {
-        if (this.taskRenderer) {
-            this.taskRenderer.toggleCompletedTasks();
-        }
-    }
-
-    togglePostponedTasks() {
-        if (this.taskRenderer) {
-            this.taskRenderer.togglePostponedTasks();
-        }
-    }
-
-    togglePendingTasks() {
-        if (this.taskRenderer) {
-            this.taskRenderer.togglePendingTasks();
-        }
-    }
-
-    async approvePendingTask(pendingTaskId) {
-        try {
-            if (this.notesManager) {
-                const task = await this.notesManager.approvePendingTask(pendingTaskId);
-                // Re-render to update counts and UI
-                if (this.taskRenderer) {
-                    this.taskRenderer.renderAll();
-                }
-                return task;
-            }
-        } catch (error) {
-            Logger.error('Failed to approve pending task', error);
-            this.notifications.showError('Failed to approve task. Please try again.');
-        }
-    }
-
-    async rejectPendingTask(pendingTaskId) {
-        try {
-            if (this.notesManager) {
-                await this.notesManager.rejectPendingTask(pendingTaskId);
-                // Re-render to update counts and UI
-                if (this.taskRenderer) {
-                    this.taskRenderer.renderAll();
-                }
-            }
-        } catch (error) {
-            Logger.error('Failed to reject pending task', error);
-            this.notifications.showError('Failed to reject task. Please try again.');
-        }
-    }
-
-    async bulkApprovePendingTasks() {
-        try {
-            const pendingTasks = this.appState.pendingTasks || [];
-            if (pendingTasks.length === 0) {
-                this.notifications.showInfo('No pending tasks to approve.');
-                return;
-            }
-
-            const taskIds = pendingTasks.map(task => task.id);
-            if (this.notesManager) {
-                await this.notesManager.bulkApprovePendingTasks(taskIds);
-                // Re-render to update counts and UI
-                if (this.taskRenderer) {
-                    this.taskRenderer.renderAll();
-                }
-            }
-        } catch (error) {
-            Logger.error('Failed to bulk approve pending tasks', error);
-            this.notifications.showError('Failed to approve tasks. Please try again.');
-        }
-    }
-
-    async bulkRejectPendingTasks() {
-        try {
-            const pendingTasks = this.appState.pendingTasks || [];
-            if (pendingTasks.length === 0) {
-                this.notifications.showInfo('No pending tasks to reject.');
-                return;
-            }
-
-            const taskIds = pendingTasks.map(task => task.id);
-            if (this.notesManager) {
-                await this.notesManager.bulkRejectPendingTasks(taskIds);
-                // Re-render to update counts and UI
-                if (this.taskRenderer) {
-                    this.taskRenderer.renderAll();
-                }
-            }
-        } catch (error) {
-            Logger.error('Failed to bulk reject pending tasks', error);
-            this.notifications.showError('Failed to reject tasks. Please try again.');
-        }
-    }
-
     openSettings() {
-        this.modalManager?.openModal('settings');
-    }
-
-    resetOnboarding() {
-        if (confirm('This will reset your AI configuration and delete all tasks and notes. Are you sure?')) {
-            try {
-                // Clear app state first
-                this.appState.setTasks([]);
-                this.appState.setNotes([]);
-                
-                // Clear all localStorage data manually
-                localStorage.clear();
-                sessionStorage.clear();
-                
-                Logger.log('Complete application reset completed');
-                location.reload();
-            } catch (error) {
-                Logger.error('Failed to reset application', error);
-                this.notifications.showError('Failed to reset application. Please try again.');
-            }
-        }
-    }
-
-    resetAIConfigOnly() {
-        if (confirm('This will reset your AI configuration but keep your tasks and notes. Are you sure?')) {
-            try {
-                // Clear all local data since we're auth-only now
-                localStorage.clear();
-                sessionStorage.clear();
-                
-                Logger.log('AI configuration reset completed');
-                location.reload();
-            } catch (error) {
-                Logger.error('Failed to reset AI configuration', error);
-                this.notifications.showError('Failed to reset AI configuration. Please try again.');
-            }
-        }
-    }
-
-    // Task management functions for HTML compatibility
-    updateTask(event) {
-        event?.preventDefault();
-        
-        try {
-            const taskId = this.appState.currentTaskId;
-            const task = this.appState.getTask(taskId);
-            if (!task) {
-                this.notifications.showError('Task not found');
-                return;
-            }
-            
-            const name = document.getElementById('editTaskName')?.value?.trim();
-            if (!name) {
-                this.notifications.showError('Task name is required');
-                return;
-            }
-            
-            const updates = {
-                name,
-                description: document.getElementById('editTaskDescription')?.value?.trim() || '',
-                notes: document.getElementById('editTaskNotes')?.value?.trim() || '',
-                modifiedAt: new Date().toISOString()
-            };
-            
-            this.appState.updateTask(taskId, updates);
-            this.modalManager?.closeModal('edit');
-            this.notifications.showSuccess('Task updated successfully!');
-            
-            Logger.log('Task updated', { taskId });
-        } catch (error) {
-            Logger.error('Failed to update task', error);
-            this.notifications.showError('Failed to update task. Please try again.');
-        }
-    }
-
-    deleteTask() {
-        if (confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
-            try {
-                const taskId = this.appState.currentTaskId;
-                this.appState.deleteTask(taskId);
-                this.modalManager?.closeModal('edit');
-                this.notifications.showSuccess('Task deleted successfully!');
-                
-                Logger.log('Task deleted', { taskId });
-            } catch (error) {
-                Logger.error('Failed to delete task', error);
-                this.notifications.showError('Failed to delete task. Please try again.');
-            }
-        }
-    }
-
-    completeTask() {
-        try {
-            const taskId = this.appState.currentTaskId;
-            const updates = {
-                completed: true,
-                completedAt: new Date().toISOString(),
-                postponed: false,
-                modifiedAt: new Date().toISOString()
-            };
-            delete updates.postponedAt;
-            
-            this.appState.updateTask(taskId, updates);
-            this.modalManager?.closeModal('edit');
-            this.notifications.showSuccess('Task completed! 🎉');
-            
-            Logger.log('Task completed', { taskId });
-        } catch (error) {
-            Logger.error('Failed to complete task', error);
-            this.notifications.showError('Failed to complete task. Please try again.');
-        }
-    }
-
-    postponeTask() {
-        try {
-            const taskId = this.appState.currentTaskId;
-            const updates = {
-                postponed: true,
-                postponedAt: new Date().toISOString(),
-                completed: false,
-                modifiedAt: new Date().toISOString()
-            };
-            delete updates.completedAt;
-            
-            this.appState.updateTask(taskId, updates);
-            this.modalManager?.closeModal('edit');
-            this.notifications.showSuccess('Task postponed');
-            
-            Logger.log('Task postponed', { taskId });
-        } catch (error) {
-            Logger.error('Failed to postpone task', error);
-            this.notifications.showError('Failed to postpone task. Please try again.');
-        }
-    }
-
-    copyTask() {
-        try {
-            const taskId = this.appState.currentTaskId;
-            const task = this.appState.getTask(taskId);
-            if (!task) {
-                this.notifications.showError('Task not found');
-                return;
-            }
-            
-            const newTask = {
-                ...task,
-                id: this.appState.generateTaskId(),
-                completed: false,
-                postponed: false,
-                date: new Date().toISOString().split('T')[0],
-                createdAt: new Date().toISOString(),
-                completedAt: undefined,
-                postponedAt: undefined,
-                modifiedAt: undefined
-            };
-            
-            this.appState.addTask(newTask);
-            this.modalManager?.closeModal('edit');
-            this.notifications.showSuccess('Task copied to today!');
-            
-            Logger.log('Task copied', { originalId: taskId, newId: newTask.id });
-        } catch (error) {
-            Logger.error('Failed to copy task', error);
-            this.notifications.showError('Failed to copy task. Please try again.');
-        }
-    }
-
-    moveToToday() {
-        try {
-            const taskId = this.appState.currentTaskId;
-            const updates = {
-                postponed: false,
-                date: new Date().toISOString().split('T')[0],
-                modifiedAt: new Date().toISOString()
-            };
-            delete updates.postponedAt;
-            
-            this.appState.updateTask(taskId, updates);
-            this.modalManager?.closeModal('edit');
-            this.notifications.showSuccess('Task moved to today!');
-            
-            Logger.log('Task moved to today', { taskId });
-        } catch (error) {
-            Logger.error('Failed to move task to today', error);
-            this.notifications.showError('Failed to move task. Please try again.');
-        }
-    }
-
-    // ============================================
-    // NOTES AND TAB MANAGEMENT METHODS
-    // ============================================
-
-    switchTab(tab) {
-        this.currentTab = tab;
-        
-        // Update tab buttons
-        document.querySelectorAll('.nav-tab').forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.getAttribute('data-tab') === tab) {
-                btn.classList.add('active');
-            }
-        });
-        
-        // Update tab content
-        document.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.remove('active');
-        });
-        
-        const activeContent = document.getElementById(`${tab}Tab`);
-        if (activeContent) {
-            activeContent.classList.add('active');
-        }
-        
-        // Render content for the active tab
-        if (tab === 'notes' && this.notesRenderer) {
-            this.notesRenderer.refresh();
-        } else if (tab === 'tasks' && this.taskRenderer) {
-            this.taskRenderer.renderAll();
-        }
-        
-        Logger.log('Tab switched', { tab });
-    }
-
-    clearSearch() {
-        const searchInput = document.getElementById('notesSearch');
-        if (searchInput) {
-            searchInput.value = '';
-        }
-        
-        const searchResults = document.getElementById('searchResults');
-        if (searchResults) {
-            searchResults.style.display = 'none';
-        }
-        
-        if (this.notesRenderer) {
-            this.notesRenderer.setSearchQuery('');
-        }
-    }
-
-    // Utility methods for global access
-    getAppState() {
-        return this.appState;
-    }
-
-    getAIService() {
-        return this.aiService;
-    }
-
-    getNotifications() {
-        return this.notifications;
-    }
-
-    // ============================================
-    // AUTHENTICATION HANDLERS
-    // ============================================
-
-    async handleAuthStateChange(isLoggedIn, user) {
-        Logger.log('Handling auth state change', { isLoggedIn, user });
-        
-        try {
-            // Sync AuthUI with auth manager
-            this.syncAuthUIWithAuthManager();
-            
-            if (isLoggedIn && user) {
-                // User just logged in - check for existing configuration
-                try {
-                    const config = await this.authStorage.loadConfiguration();
-                    if (config && config.hasCompletedOnboarding) {
-                        // User has existing configuration, reinitialize with it
-                        await this.initializeMainApp(config);
-                        this.notifications.showSuccess(`Welcome back, ${user.username}!`);
-                    } else {
-                        // User needs to complete onboarding - but don't show it if already in onboarding
-                        const onboardingOverlay = document.getElementById('onboardingOverlay');
-                        if (!onboardingOverlay || onboardingOverlay.style.display === 'none') {
-                            this.initializeOnboarding();
-                        }
-                    }
-                } catch (error) {
-                    Logger.error('Failed to load configuration after login', error);
-                    // Show onboarding if config load fails
-                    this.initializeOnboarding();
-                }
-                
-                // Update UI to show user info
-                this.updateUserInterface();
-            } else {
-                // User logged out or auth failed - show onboarding (authentication required)
-                this.initializeOnboarding();
-            }
-        } catch (error) {
-            Logger.error('Failed to handle auth state change', error);
-            this.notifications.showError('Authentication error. Please try again.');
-        }
-    }
-
-    async handleLogout() {
-        Logger.log('Handling logout');
-        
-        try {
-            // Clear auth-related data
-            this.authUI.isLoggedIn = false;
-            this.authUI.currentUser = null;
-            this.authUI.authToken = null;
-            
-            // Clear session data from auth storage
-            this.authStorage.clearSessionData();
-            
-            // Clear app state completely
-            this.appState.setTasks([]);
-            this.appState.setNotes([]);
-            this.appState.setPendingTasks([]);
-            this.appState.clearExtractedTasks();
-            
-            // Clear onboarding data
-            this.appState.onboardingData = {};
-            
-            // Stop auto-save
-            if (this.autoSaveInterval) {
-                clearInterval(this.autoSaveInterval);
-                this.autoSaveInterval = null;
-            }
-            
-            // Show onboarding since authentication is now required
-            this.initializeOnboarding();
-            
-            // Update UI to remove user info
-            this.updateUserInterface();
-            
-            Logger.log('Logout handled successfully - app state cleared');
-            
-        } catch (error) {
-            Logger.error('Failed to handle logout', error);
-            this.notifications.showError('Logout error. Please refresh the page.');
-        }
-    }
-
-    async migrateLocalDataIfNeeded() {
-        try {
-            // Check if there's local data that needs migration
-            const localTasks = StorageManager.loadTasks();
-            const localNotes = StorageManager.loadNotes();
-            const localConfig = StorageManager.loadConfiguration();
-            
-            if (localTasks.length > 0 || localNotes.length > 0 || localConfig) {
-                Logger.log('Found local data, offering migration', {
-                    tasks: localTasks.length,
-                    notes: localNotes.length,
-                    hasConfig: !!localConfig
-                });
-                
-                const shouldMigrate = confirm(
-                    'You have local data that can be synced to your account. ' +
-                    'Would you like to migrate your tasks and notes to the cloud?'
-                );
-                
-                if (shouldMigrate) {
-                    // Since we're now using auth-only storage, we can't migrate from hybrid
-                    // This method is no longer needed in the new architecture
-                    this.notifications.showInfo('Data migration is no longer available. Please manually recreate your data.');
-                }
-            }
-        } catch (error) {
-            Logger.error('Failed to migrate local data', error);
-            this.notifications.showError('Failed to migrate local data. Your data is still safe locally.');
-        }
-    }
-
-    updateUserInterface() {
-        // Update the user greeting in the existing header
-        const userGreeting = document.getElementById('userGreeting');
-        if (userGreeting) {
-            if (this.authUI.isLoggedIn && this.authUI.currentUser) {
-                userGreeting.textContent = this.authUI.currentUser.username;
-            } else {
-                userGreeting.textContent = this.appState.onboardingData?.userName || 'Guest';
-            }
-        }
-        
-        // Don't add separate user info section - use the existing header structure
-        // The logout functionality will be handled through the settings modal
-    }
-
-    // ============================================
-    // AI RECONFIGURATION METHODS
-    // ============================================
-
-    openAIReconfigModal() {
         if (this.modalManager) {
-            this.modalManager.openModal('aiReconfig');
+            this.modalManager.openModal('settings');
         }
     }
 
-    selectReconfigService(service) {
-        // Store the selected service temporarily
-        this.tempReconfigData = { service };
-        
-        // Show service configuration step
-        this.showReconfigStep(2, service);
-        
-        Logger.log('AI reconfig service selected', { service });
-    }
-
-    showReconfigStep(stepNumber, service = null) {
-        // Hide all steps
-        document.querySelectorAll('.reconfig-step').forEach(step => {
-            step.style.display = 'none';
-            step.classList.remove('active');
+    switchTab(tabName) {
+        // Hide all tab contents
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
         });
         
-        // Show the target step
-        const targetStep = document.getElementById(`reconfigStep${stepNumber}`);
-        if (targetStep) {
-            targetStep.style.display = 'block';
-            targetStep.classList.add('active');
-            
-            if (stepNumber === 2 && service) {
-                this.populateServiceConfigStep(service);
-            } else if (stepNumber === 3) {
-                this.populateModelSelectionStep();
-            }
-        }
-    }
-
-    populateServiceConfigStep(service) {
-        const content = document.getElementById('reconfigServiceContent');
-        if (!content) return;
-        
-        const currentConfig = this.appState.onboardingData;
-        
-        switch (service) {
-            case 'ollama':
-                content.innerHTML = `
-                    <h3>Configure Ollama</h3>
-                    <p class="step-description">Enter your Ollama server details</p>
-                    
-                    <div class="form-group">
-                        <label for="reconfigOllamaUrl">Ollama Server URL</label>
-                        <input type="text" id="reconfigOllamaUrl" 
-                               value="${currentConfig.service === 'ollama' ? currentConfig.endpoint?.replace('/api/chat', '') || 'localhost:11434' : 'localhost:11434'}"
-                               placeholder="e.g., localhost:11434 or 192.168.1.100:11434" />
-                        <p class="input-hint">Just enter the address, we'll handle the rest</p>
-                    </div>
-                    
-                    <div class="reconfig-actions">
-                        <button class="btn btn-primary" onclick="testReconfigConnection('ollama')">
-                            Test Connection
-                        </button>
-                        <button class="btn btn-secondary" onclick="taskFlowApp?.showReconfigStep?.(1)">
-                            Back
-                        </button>
-                    </div>
-                    
-                    <div class="connection-status" id="reconfigConnectionStatus"></div>
-                `;
-                break;
-                
-            case 'openai':
-                content.innerHTML = `
-                    <h3>Configure OpenAI</h3>
-                    <p class="step-description">Enter your OpenAI API details</p>
-                    
-                    <div class="form-group">
-                        <label for="reconfigOpenaiKey">OpenAI API Key</label>
-                        <input type="password" id="reconfigOpenaiKey" 
-                               value="${currentConfig.service === 'openai' ? currentConfig.apiKey || '' : ''}"
-                               placeholder="sk-..." required />
-                        <p class="input-hint">Your API key is stored securely and never sent to our servers</p>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="reconfigOpenaiEndpoint">API Endpoint (Optional)</label>
-                        <input type="url" id="reconfigOpenaiEndpoint" 
-                               value="${currentConfig.service === 'openai' ? currentConfig.endpoint || 'https://api.openai.com/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions'}"
-                               placeholder="https://api.openai.com/v1/chat/completions" />
-                        <p class="input-hint">Leave as default for standard OpenAI endpoint</p>
-                    </div>
-                    
-                    <div class="reconfig-actions">
-                        <button class="btn btn-primary" onclick="testReconfigConnection('openai')">
-                            Test & Continue
-                        </button>
-                        <button class="btn btn-secondary" onclick="taskFlowApp?.showReconfigStep?.(1)">
-                            Back
-                        </button>
-                    </div>
-                    
-                    <div class="connection-status" id="reconfigConnectionStatus"></div>
-                `;
-                break;
-                
-            case 'openwebui':
-                content.innerHTML = `
-                    <h3>Configure Open WebUI</h3>
-                    <p class="step-description">Enter your Open WebUI server details</p>
-                    
-                    <div class="form-group">
-                        <label for="reconfigOpenwebuiUrl">Open WebUI Server URL</label>
-                        <input type="text" id="reconfigOpenwebuiUrl" 
-                               value="${currentConfig.service === 'openwebui' ? currentConfig.endpoint?.replace('/api/chat/completions', '') || 'localhost:3000' : 'localhost:3000'}"
-                               placeholder="e.g., localhost:3000 or https://openwebui.example.com" />
-                        <p class="input-hint">Your Open WebUI server address</p>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="reconfigOpenwebuiKey">API Key</label>
-                        <input type="password" id="reconfigOpenwebuiKey" 
-                               value="${currentConfig.service === 'openwebui' ? currentConfig.apiKey || '' : ''}"
-                               placeholder="Your Open WebUI API key" required />
-                        <p class="input-hint">Get your API key from Settings > Account in Open WebUI</p>
-                    </div>
-                    
-                    <div class="reconfig-actions">
-                        <button class="btn btn-primary" onclick="testReconfigConnection('openwebui')">
-                            Test Connection
-                        </button>
-                        <button class="btn btn-secondary" onclick="taskFlowApp?.showReconfigStep?.(1)">
-                            Back
-                        </button>
-                    </div>
-                    
-                    <div class="connection-status" id="reconfigConnectionStatus"></div>
-                `;
-                break;
-        }
-        
-        // Add global function for testing connection
-        window.testReconfigConnection = (service) => this.testReconfigConnection(service);
-    }
-
-    async testReconfigConnection(service) {
-        const statusDiv = document.getElementById('reconfigConnectionStatus');
-        const testBtn = document.querySelector('.reconfig-actions .btn-primary');
-        
-        if (testBtn) {
-            testBtn.innerHTML = '<span class="loading"></span> Testing...';
-            testBtn.disabled = true;
-        }
-        
-        if (statusDiv) {
-            statusDiv.innerHTML = '';
-        }
-        
-        try {
-            let result;
-            
-            switch (service) {
-                case 'ollama':
-                    const ollamaUrl = document.getElementById('reconfigOllamaUrl')?.value?.trim();
-                    if (!ollamaUrl) {
-                        throw new Error('Please enter an Ollama server URL');
-                    }
-                    result = await OllamaService.getAvailableModels(ollamaUrl);
-                    if (result.success) {
-                        this.tempReconfigData.endpoint = result.endpoint;
-                        this.tempReconfigData.models = result.models;
-                    }
-                    break;
-                    
-                case 'openai':
-                    const apiKey = document.getElementById('reconfigOpenaiKey')?.value?.trim();
-                    const endpoint = document.getElementById('reconfigOpenaiEndpoint')?.value?.trim() || 'https://api.openai.com/v1/chat/completions';
-                    
-                    if (!apiKey) {
-                        throw new Error('Please enter your OpenAI API key');
-                    }
-                    
-                    const validation = OpenAIService.validateApiKey(apiKey);
-                    if (!validation.valid) {
-                        throw new Error(validation.message);
-                    }
-                    
-                    this.tempReconfigData.apiKey = apiKey;
-                    this.tempReconfigData.endpoint = endpoint;
-                    result = { success: true, message: 'API key validated successfully' };
-                    break;
-                    
-                case 'openwebui':
-                    const openwebuiUrl = document.getElementById('reconfigOpenwebuiUrl')?.value?.trim();
-                    const openwebuiKey = document.getElementById('reconfigOpenwebuiKey')?.value?.trim();
-                    
-                    const openwebuiValidation = OpenWebUIService.validateConnection(openwebuiUrl, openwebuiKey);
-                    if (!openwebuiValidation.valid) {
-                        throw new Error(openwebuiValidation.message);
-                    }
-                    
-                    result = await OpenWebUIService.getAvailableModels(openwebuiUrl, openwebuiKey);
-                    if (result.success) {
-                        this.tempReconfigData.apiKey = openwebuiKey;
-                        this.tempReconfigData.endpoint = result.endpoint;
-                        this.tempReconfigData.fallbackEndpoint = result.fallbackEndpoint;
-                        this.tempReconfigData.models = result.models;
-                    }
-                    break;
-            }
-            
-            if (result.success) {
-                if (statusDiv) {
-                    statusDiv.innerHTML = `<div class="success">✓ ${result.message || 'Connection successful!'}</div>`;
-                }
-                
-                // Move to model selection step
-                setTimeout(() => {
-                    this.showReconfigStep(3);
-                }, 1500);
-                
-                Logger.log('AI reconfig connection test successful', { service });
-            } else {
-                throw new Error(result.message || 'Connection failed');
-            }
-            
-        } catch (error) {
-            if (statusDiv) {
-                statusDiv.innerHTML = `<div class="error">❌ ${error.message}</div>`;
-            }
-            Logger.error('AI reconfig connection test failed', error);
-        } finally {
-            if (testBtn) {
-                testBtn.textContent = service === 'openai' ? 'Test & Continue' : 'Test Connection';
-                testBtn.disabled = false;
-            }
-        }
-    }
-
-    populateModelSelectionStep() {
-        const content = document.getElementById('reconfigModelContent');
-        if (!content || !this.tempReconfigData) return;
-        
-        const service = this.tempReconfigData.service;
-        const currentConfig = this.appState.onboardingData;
-        
-        switch (service) {
-            case 'ollama':
-            case 'openwebui':
-                const models = this.tempReconfigData.models || [];
-                content.innerHTML = `
-                    <h3>Select Model</h3>
-                    <p class="step-description">Choose which model to use</p>
-                    
-                    <div class="form-group">
-                        <label for="reconfigModelSelect">Available Models</label>
-                        <select id="reconfigModelSelect" size="6">
-                            ${models.map(model => {
-                                const value = service === 'ollama' ? model.name : model.id;
-                                const display = service === 'ollama' ? OllamaService.formatModelDisplay(model) : model.name;
-                                const selected = currentConfig.model === value ? 'selected' : '';
-                                return `<option value="${value}" ${selected}>${display}</option>`;
-                            }).join('')}
-                        </select>
-                    </div>
-                    
-                    <div class="reconfig-actions">
-                        <button class="btn btn-primary" onclick="taskFlowApp?.proceedToTestStep?.()">
-                            Continue
-                        </button>
-                        <button class="btn btn-secondary" onclick="taskFlowApp?.showReconfigStep?.(2)">
-                            Back
-                        </button>
-                    </div>
-                `;
-                break;
-                
-            case 'openai':
-                content.innerHTML = `
-                    <h3>Select Model</h3>
-                    <p class="step-description">Choose which OpenAI model to use</p>
-                    
-                    <div class="model-options">
-                        <label class="model-option">
-                            <input type="radio" name="reconfigOpenaiModel" value="gpt-4o-mini" 
-                                   ${currentConfig.model === 'gpt-4o-mini' ? 'checked' : ''} />
-                            <div class="model-card">
-                                <h4>GPT-4o Mini</h4>
-                                <p>Fast and cost-effective</p>
-                            </div>
-                        </label>
-                        <label class="model-option">
-                            <input type="radio" name="reconfigOpenaiModel" value="gpt-4o" 
-                                   ${currentConfig.model === 'gpt-4o' ? 'checked' : ''} />
-                            <div class="model-card">
-                                <h4>GPT-4o</h4>
-                                <p>Most capable model</p>
-                            </div>
-                        </label>
-                        <label class="model-option">
-                            <input type="radio" name="reconfigOpenaiModel" value="gpt-3.5-turbo" 
-                                   ${currentConfig.model === 'gpt-3.5-turbo' ? 'checked' : ''} />
-                            <div class="model-card">
-                                <h4>GPT-3.5 Turbo</h4>
-                                <p>Legacy fast model</p>
-                            </div>
-                        </label>
-                        <label class="model-option">
-                            <input type="radio" name="reconfigOpenaiModel" value="custom" 
-                                   ${!['gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo'].includes(currentConfig.model) ? 'checked' : ''} />
-                            <div class="model-card">
-                                <h4>Custom Model</h4>
-                                <input type="text" id="reconfigCustomModelName" 
-                                       value="${!['gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo'].includes(currentConfig.model) ? currentConfig.model || '' : ''}"
-                                       placeholder="Enter model name..." 
-                                       onclick="document.querySelector('input[value=custom]').checked = true" />
-                            </div>
-                        </label>
-                    </div>
-                    
-                    <div class="reconfig-actions">
-                        <button class="btn btn-primary" onclick="taskFlowApp?.proceedToTestStep?.()">
-                            Continue
-                        </button>
-                        <button class="btn btn-secondary" onclick="taskFlowApp?.showReconfigStep?.(2)">
-                            Back
-                        </button>
-                    </div>
-                `;
-                break;
-        }
-        
-        // Add global function
-        window.proceedToTestStep = () => this.proceedToTestStep();
-    }
-
-    proceedToTestStep() {
-        // Get selected model
-        let selectedModel = '';
-        const service = this.tempReconfigData.service;
-        
-        switch (service) {
-            case 'ollama':
-            case 'openwebui':
-                selectedModel = document.getElementById('reconfigModelSelect')?.value;
-                break;
-            case 'openai':
-                const selectedElement = document.querySelector('input[name="reconfigOpenaiModel"]:checked');
-                if (selectedElement?.value === 'custom') {
-                    selectedModel = document.getElementById('reconfigCustomModelName')?.value?.trim();
-                    if (!selectedModel) {
-                        this.notifications.showError('Please enter a model name');
-                        return;
-                    }
-                } else {
-                    selectedModel = selectedElement?.value;
-                }
-                break;
-        }
-        
-        if (!selectedModel) {
-            this.notifications.showError('Please select a model');
-            return;
-        }
-        
-        this.tempReconfigData.model = selectedModel;
-        this.showReconfigStep(4);
-        this.testReconfiguredAI();
-    }
-
-    async testReconfiguredAI() {
-        const testConnection = document.getElementById('reconfigTestConnection');
-        const testModel = document.getElementById('reconfigTestModel');
-        const finalActions = document.getElementById('reconfigFinalActions');
-        
-        try {
-            // Test connection
-            if (testConnection) {
-                const span = testConnection.querySelector('span:last-child');
-                if (span) span.textContent = 'Testing connection...';
-            }
-            
-            // Create temporary AI service for testing
-            const tempConfig = {
-                ...this.tempReconfigData,
-                nameVariations: this.appState.onboardingData.nameVariations
-            };
-            
-            const tempAIService = this.createAIService(tempConfig);
-            const connectionResult = await tempAIService.testConnection();
-            
-            if (connectionResult.success) {
-                if (testConnection) {
-                    testConnection.className = 'test-item success';
-                    const icon = testConnection.querySelector('.test-icon');
-                    const span = testConnection.querySelector('span:last-child');
-                    if (icon) icon.textContent = '✓';
-                    if (span) span.textContent = 'Connection successful';
-                }
-                
-                // Test model
-                if (testModel) {
-                    const span = testModel.querySelector('span:last-child');
-                    if (span) span.textContent = 'Verifying model...';
-                    
-                    setTimeout(() => {
-                        testModel.className = 'test-item success';
-                        const icon = testModel.querySelector('.test-icon');
-                        const modelSpan = testModel.querySelector('span:last-child');
-                        if (icon) icon.textContent = '✓';
-                        if (modelSpan) modelSpan.textContent = 'Model verified';
-                        
-                        // Show final actions
-                        if (finalActions) {
-                            finalActions.style.display = 'flex';
-                        }
-                    }, 500);
-                }
-            } else {
-                throw new Error(connectionResult.message);
-            }
-            
-        } catch (error) {
-            Logger.error('AI reconfiguration test failed', error);
-            
-            if (testConnection) {
-                testConnection.className = 'test-item error';
-                const icon = testConnection.querySelector('.test-icon');
-                const span = testConnection.querySelector('span:last-child');
-                if (icon) icon.textContent = '❌';
-                if (span) span.textContent = `Error: ${error.message}`;
-            }
-            
-            if (finalActions) {
-                finalActions.innerHTML = `
-                    <button class="btn btn-secondary" onclick="taskFlowApp?.showReconfigStep?.(3)">
-                        Back to Model Selection
-                    </button>
-                    <button class="btn btn-secondary" onclick="closeModal('aiReconfig')">
-                        Cancel
-                    </button>
-                `;
-                finalActions.style.display = 'flex';
-            }
-        }
-    }
-
-    async saveAIReconfiguration() {
-        try {
-            if (!this.tempReconfigData) {
-                throw new Error('No configuration data to save');
-            }
-            
-            // Merge with existing configuration
-            const newConfig = {
-                ...this.appState.onboardingData,
-                service: this.tempReconfigData.service,
-                endpoint: this.tempReconfigData.endpoint,
-                model: this.tempReconfigData.model,
-                apiKey: this.tempReconfigData.apiKey,
-                fallbackEndpoint: this.tempReconfigData.fallbackEndpoint
-            };
-            
-            // Save configuration
-            const saved = await this.authStorage.saveConfiguration(newConfig);
-            if (!saved) {
-                throw new Error('Failed to save configuration');
-            }
-            
-            // Update app state
-            this.appState.setOnboardingData(newConfig);
-            
-            // Recreate AI service with new configuration
-            this.aiService = this.createAIService(newConfig);
-            
-            // Update managers with new AI service
-            if (this.nameVariationsManager) {
-                this.nameVariationsManager.aiService = this.aiService;
-            }
-            if (this.taskExtractionManager) {
-                this.taskExtractionManager.aiService = this.aiService;
-            }
-            if (this.notesManager) {
-                this.notesManager.aiService = this.aiService;
-            }
-            
-            // Close modal and show success
-            this.modalManager?.closeModal('aiReconfig');
-            this.notifications.showSuccess('AI configuration updated successfully!');
-            
-            // Clear temporary data
-            this.tempReconfigData = null;
-            
-            Logger.log('AI reconfiguration completed successfully', { 
-                service: newConfig.service, 
-                model: newConfig.model 
-            });
-            
-        } catch (error) {
-            Logger.error('Failed to save AI reconfiguration', error);
-            this.notifications.showError('Failed to save configuration. Please try again.');
-        }
-    }
-
-    async testAIConnection() {
-        if (!this.aiService) {
-            this.notifications.showError('No AI service configured');
-            return;
-        }
-        
-        const testBtn = document.querySelector('[onclick*="testAIConnection"]');
-        if (testBtn) {
-            const originalText = testBtn.textContent;
-            testBtn.innerHTML = '<span class="loading"></span> Testing...';
-            testBtn.disabled = true;
-            
-            try {
-                const result = await this.aiService.testConnection();
-                if (result.success) {
-                    this.notifications.showSuccess('AI connection test successful!');
-                } else {
-                    this.notifications.showError(`Connection test failed: ${result.message}`);
-                }
-            } catch (error) {
-                this.notifications.showError(`Connection test failed: ${error.message}`);
-                Logger.error('AI connection test failed', error);
-            } finally {
-                if (testBtn) {
-                    testBtn.textContent = originalText;
-                    testBtn.disabled = false;
-                }
-            }
-        }
-    }
-
-    // ============================================
-    // CONFIGURATION VALIDATION
-    // ============================================
-
-    hasValidAIConfiguration(config) {
-        if (!config) {
-            Logger.log('No configuration found');
-            return false;
-        }
-
-        // Check for required AI configuration fields (userName is optional for existing configs)
-        const requiredFields = ['service', 'endpoint', 'model'];
-        const hasRequiredFields = requiredFields.every(field => {
-            const hasField = config[field] && config[field].trim() !== '';
-            if (!hasField) {
-                Logger.log(`Missing required field: ${field}`);
-            }
-            return hasField;
+        // Remove active class from all nav tabs
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.classList.remove('active');
         });
-
-        if (!hasRequiredFields) {
-            Logger.log('Configuration missing required fields');
-            return false;
-        }
-
-        // Check service-specific requirements
-        if (config.service === 'openai' || config.service === 'openwebui') {
-            if (!config.apiKey || config.apiKey.trim() === '') {
-                Logger.log('OpenAI/OpenWebUI service requires API key');
-                return false;
-            }
-        }
-
-        // If userName is missing, add a default one
-        if (!config.userName) {
-            config.userName = 'User';
-            Logger.log('Added default userName to configuration');
-        }
-
-        Logger.log('Valid AI configuration found', {
-            service: config.service,
-            model: config.model,
-            hasApiKey: !!(config.apiKey),
-            userName: config.userName
-        });
-
-        return true;
-    }
-
-    async destroy() {
-        if (this.autoSaveInterval) {
-            clearInterval(this.autoSaveInterval);
+        
+        // Show selected tab content
+        const selectedTab = document.getElementById(`${tabName}Tab`);
+        if (selectedTab) {
+            selectedTab.classList.add('active');
         }
         
-        // Save final state
-        try {
-            if (authManager.isAuthenticated()) {
-                await this.authStorage.saveTasks(this.appState.tasks);
-            }
-        } catch (error) {
-            Logger.error('Failed to save on destroy', error);
+        // Add active class to selected nav tab
+        const selectedNavTab = document.querySelector(`[data-tab="${tabName}"]`);
+        if (selectedNavTab) {
+            selectedNavTab.classList.add('active');
         }
         
-        Logger.log('TaskFlow AI destroyed');
+        // Update current tab
+        this.currentTab = tabName;
+        
+        // Initialize tab-specific functionality
+        if (tabName === 'chat' && this.chatUI && !this.chatUI.initialized) {
+            this.chatUI.initialize();
+        }
+        
+        // Refresh notes tab when selected
+        if (tabName === 'notes' && this.notesRenderer) {
+            this.notesRenderer.refresh();
+        }
+        
+        Logger.log('Switched to tab', { tabName });
     }
-}
-
-// Global app instance
-let app = null;
-
-// Initialize basic global functions immediately to prevent "function not defined" errors
-function initializeBasicGlobalFunctions() {
-    // Basic fallback functions that show loading messages
-    const showLoadingMessage = () => {
-        alert('The application is still loading. Please wait a moment and try again.');
-    };
     
-    // Onboarding functions
-    window.showStep = window.showStep || showLoadingMessage;
-    window.nextStep = window.nextStep || showLoadingMessage;
-    window.previousStep = window.previousStep || showLoadingMessage;
-    window.selectService = window.selectService || showLoadingMessage;
-    window.createAccount = window.createAccount || showLoadingMessage;
-    window.signInUser = window.signInUser || showLoadingMessage;
-    window.testOllamaConnection = window.testOllamaConnection || showLoadingMessage;
-    window.testOpenWebUIConnection = window.testOpenWebUIConnection || showLoadingMessage;
-    window.completeOnboarding = window.completeOnboarding || showLoadingMessage;
-    
-    // Notes functions
-    window.openNotesModal = window.openNotesModal || showLoadingMessage;
-    window.closeNotesModal = window.closeNotesModal || (() => {});
-    window.saveNote = window.saveNote || showLoadingMessage;
-    window.updateNote = window.updateNote || showLoadingMessage;
-    window.generateSummary = window.generateSummary || showLoadingMessage;
-    window.performExport = window.performExport || showLoadingMessage;
-    window.copyNoteContent = window.copyNoteContent || showLoadingMessage;
-    window.copySummary = window.copySummary || showLoadingMessage;
-    window.exportSingleNote = window.exportSingleNote || showLoadingMessage;
-    window.confirmDeleteNote = window.confirmDeleteNote || showLoadingMessage;
-    window.switchTab = window.switchTab || showLoadingMessage;
-    window.searchNotes = window.searchNotes || (() => {});
-    window.sortNotes = window.sortNotes || (() => {});
-    window.toggleTagFilter = window.toggleTagFilter || (() => {});
-    window.clearTagFilters = window.clearTagFilters || (() => {});
-    window.clearSearch = window.clearSearch || (() => {});
-    window.openNote = window.openNote || showLoadingMessage;
-    
-    // Task functions
-    window.openModal = window.openModal || showLoadingMessage;
-    window.closeModal = window.closeModal || (() => {});
-    window.saveQuickTask = window.saveQuickTask || showLoadingMessage;
-    window.extractTask = window.extractTask || showLoadingMessage;
-    window.saveExtractedTasks = window.saveExtractedTasks || showLoadingMessage;
-    window.removeExtractedTask = window.removeExtractedTask || showLoadingMessage;
-    window.resetAiModal = window.resetAiModal || (() => {});
-    window.toggleTaskComplete = window.toggleTaskComplete || showLoadingMessage;
-    window.toggleCompletedTasks = window.toggleCompletedTasks || (() => {});
-    window.togglePostponedTasks = window.togglePostponedTasks || (() => {});
-    window.togglePendingTasks = window.togglePendingTasks || (() => {});
-    window.openSettings = window.openSettings || showLoadingMessage;
-    
-    Logger.log('Basic global functions initialized');
-}
-
-// Initialize basic functions immediately
-initializeBasicGlobalFunctions();
-
-// Function to setup global functions after app initialization
-function setupGlobalFunctions(app) {
-    // Global functions for HTML compatibility
-    window.openModal = (type, taskId) => app.openModal(type, taskId);
-    window.closeModal = (type) => app.closeModal(type);
-    window.saveQuickTask = (event) => app.saveQuickTask(event);
-    window.extractTask = (event) => app.extractTask(event);
-    window.saveExtractedTasks = () => app.saveExtractedTasks();
-    window.removeExtractedTask = (index) => app.removeExtractedTask(index);
-    window.resetAiModal = () => app.resetAiModal();
-    window.toggleTaskComplete = (taskId, event) => app.toggleTaskComplete(taskId, event);
-    window.toggleCompletedTasks = () => app.toggleCompletedTasks();
-    window.togglePostponedTasks = () => app.togglePostponedTasks();
-    window.openSettings = () => app.openSettings();
-    window.resetOnboarding = () => app.resetOnboarding();
-    window.resetAIConfigOnly = () => app.resetAIConfigOnly();
-    
-    // AI Reconfiguration functions
-    window.selectReconfigService = (service) => app.selectReconfigService(service);
-    window.saveAIReconfiguration = () => app.saveAIReconfiguration();
-
     // Task management functions
-    window.updateTask = (event) => app.updateTask(event);
-    window.deleteTask = () => app.deleteTask();
-    window.completeTask = () => app.completeTask();
-    window.postponeTask = () => app.postponeTask();
-    window.copyTask = () => app.copyTask();
-    window.moveToToday = () => app.moveToToday();
-    
-    // Notes functions - properly initialized after app is ready
-    window.openNotesModal = (type, noteId) => {
-        if (app && app.notesModalManager) {
-            app.notesModalManager.openModal(type, noteId);
-        } else {
-            alert('Notes functionality is still loading. Please wait a moment and try again.');
+    toggleTaskComplete(taskId, event) {
+        if (event) {
+            event.stopPropagation(); // Prevent opening the edit modal
         }
-    };
-    window.closeNotesModal = (type) => {
-        if (app && app.notesModalManager) {
-            app.notesModalManager.closeModal(type);
+        
+        const task = this.appState.getTask(taskId);
+        if (!task) return;
+        
+        const updates = {
+            completed: !task.completed
+        };
+        
+        if (updates.completed) {
+            updates.completedAt = new Date().toISOString();
         } else {
-            // Fallback: try to close modal manually
-            const modalId = `notes${type.charAt(0).toUpperCase() + type.slice(1)}ModalOverlay`;
-            const modal = document.getElementById(modalId);
-            if (modal) {
-                modal.remove();
-            }
+            updates.completedAt = null;
         }
-    };
-    window.saveNote = (event) => {
-        if (app && app.notesModalManager) {
-            app.notesModalManager.saveNote(event);
-        } else {
-            alert('Notes functionality is still loading. Please wait a moment and try again.');
-        }
-    };
-    window.updateNote = (event) => {
-        if (app && app.notesModalManager) {
-            app.notesModalManager.updateNote(event);
-        } else {
-            alert('Notes functionality is still loading. Please wait a moment and try again.');
-        }
-    };
-    window.generateSummary = () => {
-        if (app && app.notesModalManager) {
-            app.notesModalManager.generateSummary();
-        } else {
-            alert('Notes functionality is still loading. Please wait a moment and try again.');
-        }
-    };
-    window.performExport = () => {
-        if (app && app.notesModalManager) {
-            app.notesModalManager.performExport();
-        } else {
-            alert('Notes functionality is still loading. Please wait a moment and try again.');
-        }
-    };
-    window.copyNoteContent = (noteId) => {
-        if (app && app.notesModalManager) {
-            app.notesModalManager.copyNoteContent(noteId);
-        } else {
-            alert('Notes functionality is still loading. Please wait a moment and try again.');
-        }
-    };
-    window.copySummary = () => {
-        if (app && app.notesModalManager) {
-            app.notesModalManager.copySummary();
-        } else {
-            alert('Notes functionality is still loading. Please wait a moment and try again.');
-        }
-    };
-    window.exportSingleNote = (noteId) => {
-        if (app && app.notesModalManager) {
-            app.notesModalManager.exportSingleNote(noteId);
-        } else {
-            alert('Notes functionality is still loading. Please wait a moment and try again.');
-        }
-    };
-    window.confirmDeleteNote = (noteId) => {
-        if (app && app.notesModalManager) {
-            app.notesModalManager.confirmDeleteNote(noteId);
-        } else {
-            console.error('Notes modal manager not initialized yet');
-            alert('Notes functionality is still loading. Please wait a moment and try again.');
-        }
-    };
-    window.switchTab = (tab) => {
-        if (app) {
-            app.switchTab(tab);
-        } else {
-            // App not initialized yet
-        }
-    };
-    window.searchNotes = (query) => {
-        if (app && app.notesRenderer) {
-            app.notesRenderer.setSearchQuery(query);
-        } else {
-            // Notes renderer not initialized yet
-        }
-    };
-    window.sortNotes = (sortBy) => {
-        if (app && app.notesRenderer) {
-            app.notesRenderer.setSortBy(sortBy);
-        } else {
-            // Notes renderer not initialized yet
-        }
-    };
-    window.toggleTagFilter = (tag) => {
-        if (app && app.notesRenderer) {
-            app.notesRenderer.toggleTagFilter(tag);
-        } else {
-            // Notes renderer not initialized yet
-        }
-    };
-    window.clearTagFilters = () => {
-        if (app && app.notesRenderer) {
-            app.notesRenderer.clearTagFilters();
-        } else {
-            // Notes renderer not initialized yet
-        }
-    };
-    window.clearSearch = () => {
-        if (app) {
-            app.clearSearch();
-        } else {
-            // App not initialized yet
-        }
-    };
-    window.openNote = (noteId) => {
-        if (app && app.notesModalManager) {
-            app.notesModalManager.openModal('view', noteId);
-        } else {
-            alert('Notes functionality is still loading. Please wait a moment and try again.');
-        }
-    };
-    
-    Logger.log('Global functions setup completed after app initialization');
-}
-
-// Initialize app when DOM is ready
-function initializeApp() {
-    if (app) {
-        app.destroy();
+        
+        this.appState.updateTask(taskId, updates);
+        Logger.log('Task completion toggled', { taskId, completed: updates.completed });
     }
     
-    app = new TaskFlowApp();
-    app.initialize();
-    
-    // Make app available globally for HTML onclick handlers
+    completeTask() {
+        const taskId = this.appState.currentTaskId;
+        if (!taskId) return;
+        
+        const task = this.appState.getTask(taskId);
+        if (!task) return;
+        
+        const updates = {
+            completed: true,
+            completedAt: new Date().toISOString()
+        };
+        
+        this.appState.updateTask(taskId, updates);
+        this.modalManager.closeModal('edit');
+        this.notifications.showSuccess('Task completed!');
+        Logger.log('Task marked as complete', { taskId });
+    }
+}
+
+// ============================================
+// GLOBAL FUNCTIONS
+// ============================================
+
+function setupGlobalFunctions(app) {
+    // Make app instance globally available for debugging
     window.taskFlowApp = app;
     
-    // Make authManager globally available for settings modal
-    window.authManager = authManager;
+    // Global tab switching
+    window.switchTab = (tabName) => app.switchTab(tabName);
     
-    // Pending task approval functions
-    window.togglePendingTasks = () => app.togglePendingTasks();
-    window.approvePendingTask = (pendingTaskId) => app.approvePendingTask(pendingTaskId);
-    window.rejectPendingTask = (pendingTaskId) => app.rejectPendingTask(pendingTaskId);
-    window.bulkApprovePendingTasks = () => app.bulkApprovePendingTasks();
-    window.bulkRejectPendingTasks = () => app.bulkRejectPendingTasks();
-    
-    // Performance debugging functions
-    window.getPerformanceReport = () => app.getPerformanceReport();
-    window.clearPerformanceMetrics = () => {
-        app.performanceMetrics.renderTimes = [];
-        app.performanceMetrics.aiRequestTimes = [];
-    };
-    
-    // Sync debugging functions
-    window.getSyncStatus = () => app.authStorage?.getSyncStatus();
-    window.forceSync = () => app.authStorage?.forceSync();
-    
-    // Auth debugging functions
-    window.checkAuth = () => {
-        console.log('Manual auth check:', {
-            authToken: localStorage.getItem('auth_token'),
-            authUI: app.authUI,
-            isAuthenticated: app.authUI?.isAuthenticated(),
-            isLoggedIn: app.authUI?.isLoggedIn
-        });
-        return app.authUI?.checkAuthStatus();
-    };
-    window.forceLogin = async (username, password) => {
-        const response = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
-        });
-        const data = await response.json();
-        console.log('Login response:', data);
-        if (data.token) {
-            localStorage.setItem('auth_token', data.token);
-            localStorage.setItem('user_data', JSON.stringify(data.user));
-            app.authUI.authToken = data.token;
-            app.authUI.currentUser = data.user;
-            app.authUI.isLoggedIn = true;
-            app.authUI.triggerAuthStateChange();
-        }
-        return data;
-    };
-    window.logout = () => {
-        if (app.authUI) {
-            app.authUI.logout();
+    // Global auth functions - make sure this is accessible globally
+    window.authManager = {
+        logout: () => {
+            if (app && app.authUI) {
+                app.authUI.logout();
+                app.handleLogout();
+            }
+        },
+        isAuthenticated: () => {
+            return app && app.authUI && app.authUI.isAuthenticated();
+        },
+        getCurrentUser: () => {
+            return app && app.authUI ? app.authUI.getCurrentUser() : null;
         }
     };
-    window.showAuthModal = () => {
-        if (app.authUI) {
-            app.authUI.showAuthModal();
+    
+// Global modal functions
+window.openModal = (type, taskId) => app.openModal(type, taskId);
+window.closeModal = (type) => {
+    if (app && app.modalManager) {
+        app.modalManager.closeModal(type);
+    }
+};
+window.openSettings = () => app.openSettings();
+window.openNotesModal = (type, noteId) => {
+    if (app.notesModalManager) {
+        app.notesModalManager.openModal(type, noteId);
+    }
+};
+window.closeNotesModal = (type) => {
+    if (app.notesModalManager) {
+        app.notesModalManager.closeModal(type);
+    }
+};
+
+// Global task functions
+window.toggleTaskComplete = (taskId, event) => {
+    if (app) {
+        app.toggleTaskComplete(taskId, event);
+    }
+};
+
+window.completeTask = () => {
+    if (app) {
+        app.completeTask();
+    }
+};
+
+window.updateTask = (event) => {
+    if (event) {
+        event.preventDefault();
+    }
+    
+    if (app) {
+        const taskId = app.appState.currentTaskId;
+        if (!taskId) return;
+        
+        const name = document.getElementById('editTaskName').value;
+        const description = document.getElementById('editTaskDescription').value;
+        const notes = document.getElementById('editTaskNotes').value;
+        
+        const updates = {
+            name: name,
+            description: description,
+            notes: notes,
+            modifiedAt: new Date().toISOString()
+        };
+        
+        app.appState.updateTask(taskId, updates);
+        app.modalManager.closeModal('edit');
+        app.notifications.showSuccess('Task updated successfully!');
+    }
+};
+
+window.deleteTask = () => {
+    if (app) {
+        const taskId = app.appState.currentTaskId;
+        if (!taskId) return;
+        
+        if (confirm('Are you sure you want to delete this task?')) {
+            app.appState.deleteTask(taskId);
+            app.modalManager.closeModal('edit');
+            app.notifications.showSuccess('Task deleted successfully!');
+        }
+    }
+};
+
+window.postponeTask = () => {
+    if (app) {
+        const taskId = app.appState.currentTaskId;
+        if (!taskId) return;
+        
+        const updates = {
+            postponed: true,
+            postponedAt: new Date().toISOString()
+        };
+        
+        app.appState.updateTask(taskId, updates);
+        app.modalManager.closeModal('edit');
+        app.notifications.showSuccess('Task postponed!');
+    }
+};
+    
+    // Chat-specific global functions
+    window.startNewChat = () => {
+        if (app.chatUI) {
+            app.chatUI.startNewChat();
         }
     };
+    
+    window.selectChat = (chatId) => {
+        if (app.chatUI) {
+            app.chatUI.selectChat(chatId);
+        }
+    };
+    
+    window.sendMessage = () => {
+        if (app.chatUI) {
+            app.chatUI.sendMessage();
+        }
+    };
+    
+    window.sendSuggestion = (suggestion) => {
+        if (app.chatUI) {
+            app.chatUI.sendSuggestion(suggestion);
+        }
+    };
+    
+    window.summarizeCurrentChat = () => {
+        if (app.chatUI) {
+            app.chatUI.summarizeCurrentChat();
+        }
+    };
+    
+    window.extractTasksFromCurrentChat = () => {
+        if (app.chatUI) {
+            app.chatUI.extractTasksFromCurrentChat();
+        }
+    };
+    
+    window.exportCurrentChat = () => {
+        if (app.chatUI) {
+            app.chatUI.exportCurrentChat();
+        }
+    };
+    
+    window.clearCurrentChat = () => {
+        if (app.chatUI) {
+            app.chatUI.clearCurrentChat();
+        }
+    };
+    
+    window.deleteChat = (chatId) => {
+        if (app.chatUI) {
+            app.chatUI.deleteChat(chatId);
+        }
+    };
+    
+    window.copyMessageContent = (messageId) => {
+        if (app.chatUI) {
+            app.chatUI.copyMessageContent(messageId);
+        }
+    };
+    
+    // Notes-specific global functions
+    window.saveNote = (event) => {
+        if (app.notesModalManager) {
+            app.notesModalManager.saveNote(event);
+        }
+    };
+    
+    window.updateNote = (event) => {
+        if (app.notesModalManager) {
+            app.notesModalManager.updateNote(event);
+        }
+    };
+    
+    window.toggleTagFilter = (tag) => {
+        if (app.notesRenderer) {
+            app.notesRenderer.toggleTagFilter(tag);
+        }
+    };
+    
+    window.clearTagFilters = () => {
+        if (app.notesRenderer) {
+            app.notesRenderer.clearTagFilters();
+        }
+    };
+    
+    window.clearSearch = () => {
+        if (app.notesRenderer) {
+            app.notesRenderer.setSearchQuery('');
+            document.getElementById('notesSearch').value = '';
+            document.getElementById('searchResults').style.display = 'none';
+        }
+    };
+    
+    window.openNote = (noteId) => {
+        if (app.notesRenderer) {
+            app.notesRenderer.openViewModal(noteId);
+        }
+    };
+    
+    window.confirmDeleteNote = (noteId) => {
+        if (app.notesModalManager) {
+            app.notesModalManager.confirmDeleteNote(noteId);
+        }
+    };
+    
+    window.copyNoteContent = (noteId) => {
+        if (app.notesModalManager) {
+            app.notesModalManager.copyNoteContent(noteId);
+        }
+    };
+    
+    window.exportSingleNote = (noteId) => {
+        if (app.notesModalManager) {
+            app.notesModalManager.exportSingleNote(noteId);
+        }
+    };
+    
+    window.generateSummary = () => {
+        if (app.notesModalManager) {
+            app.notesModalManager.generateSummary();
+        }
+    };
+    
+    window.copySummary = () => {
+        if (app.notesModalManager) {
+            app.notesModalManager.copySummary();
+        }
+    };
+    
+    window.performExport = () => {
+        if (app.notesModalManager) {
+            app.notesModalManager.performExport();
+        }
+    };
+    
+    window.searchNotes = (query) => {
+        if (app.notesRenderer) {
+            app.notesRenderer.search(query);
+        }
+    };
+    
+    window.sortNotes = (sortBy) => {
+        if (app.notesRenderer) {
+            app.notesRenderer.sort(sortBy);
+        }
+    };
+    
+    Logger.log('Global functions setup completed');
 }
 
-// Auto-initialize
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeApp);
-} else {
-    initializeApp();
-}
+// ============================================
+// APPLICATION STARTUP
+// ============================================
 
+// Initialize the application when DOM is ready
+document.addEventListener('DOMContentLoaded', async () => {
+    const app = new TaskFlowApp();
+    await app.initialize();
+});
+
+// Export for module usage
 export { TaskFlowApp };

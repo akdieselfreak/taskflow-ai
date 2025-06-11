@@ -119,6 +119,7 @@ app.use('/api/tasks', dataLimiter);
 app.use('/api/notes', dataLimiter);
 app.use('/api/config', dataLimiter);
 app.use('/api/migrate', dataLimiter);
+app.use('/api/chats', dataLimiter);
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -346,6 +347,91 @@ app.post('/api/config', authenticateToken, async (req, res) => {
     } catch (error) {
         Logger.error('Failed to save configuration', error);
         res.status(500).json({ error: 'Failed to save configuration' });
+    }
+});
+
+// ====== CHAT ROUTES ======
+
+app.get('/api/chats', authenticateToken, async (req, res) => {
+    try {
+        Logger.log('Loading chats for user', { userId: req.user.id });
+        const chats = await dbManager.loadChats(req.user.id);
+        Logger.log('Chats loaded', { userId: req.user.id, count: chats ? chats.length : 0 });
+        res.json({ chats: chats || [] });
+    } catch (error) {
+        Logger.error('Failed to load chats', error);
+        res.status(500).json({ error: 'Failed to load chats' });
+    }
+});
+
+app.post('/api/chats', authenticateToken, async (req, res) => {
+    try {
+        const { chats } = req.body;
+        
+        if (!Array.isArray(chats)) {
+            return res.status(400).json({ error: 'Chats must be an array' });
+        }
+
+        Logger.log('Saving chats for user', { userId: req.user.id, count: chats.length });
+        const success = await dbManager.saveChats(req.user.id, chats);
+        Logger.log('Chats save result', { userId: req.user.id, success });
+        
+        if (success) {
+            res.json({ message: 'Chats saved successfully' });
+        } else {
+            res.status(500).json({ error: 'Failed to save chats' });
+        }
+    } catch (error) {
+        Logger.error('Failed to save chats', error);
+        res.status(500).json({ error: 'Failed to save chats' });
+    }
+});
+
+app.post('/api/chats/:chatId', authenticateToken, async (req, res) => {
+    try {
+        const { chatId } = req.params;
+        const { chat } = req.body;
+        
+        if (!chat) {
+            return res.status(400).json({ error: 'Chat data required' });
+        }
+
+        // Ensure the chat ID matches
+        if (chat.id !== chatId) {
+            return res.status(400).json({ error: 'Chat ID mismatch' });
+        }
+
+        Logger.log('Saving individual chat for user', { userId: req.user.id, chatId });
+        const success = await dbManager.saveChat(req.user.id, chat);
+        Logger.log('Individual chat save result', { userId: req.user.id, chatId, success });
+        
+        if (success) {
+            res.json({ message: 'Chat saved successfully' });
+        } else {
+            res.status(500).json({ error: 'Failed to save chat' });
+        }
+    } catch (error) {
+        Logger.error('Failed to save individual chat', error);
+        res.status(500).json({ error: 'Failed to save chat' });
+    }
+});
+
+app.delete('/api/chats/:chatId', authenticateToken, async (req, res) => {
+    try {
+        const { chatId } = req.params;
+
+        Logger.log('Deleting chat for user', { userId: req.user.id, chatId });
+        const success = await dbManager.deleteChat(req.user.id, chatId);
+        Logger.log('Chat delete result', { userId: req.user.id, chatId, success });
+        
+        if (success) {
+            res.json({ message: 'Chat deleted successfully' });
+        } else {
+            res.status(500).json({ error: 'Failed to delete chat' });
+        }
+    } catch (error) {
+        Logger.error('Failed to delete chat', error);
+        res.status(500).json({ error: 'Failed to delete chat' });
     }
 });
 

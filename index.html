@@ -336,6 +336,10 @@
                 <span class="nav-icon">📝</span>
                 <span class="nav-label">Notes</span>
             </button>
+            <button class="nav-tab" data-tab="chat" onclick="switchTab('chat')">
+                <span class="nav-icon">💬</span>
+                <span class="nav-label">Chat</span>
+            </button>
         </nav>
 
         <!-- Tasks Section -->
@@ -439,6 +443,11 @@
 
             <!-- Search Results -->
             <div class="search-results" id="searchResults" style="display: none;"></div>
+        </div>
+
+        <!-- Chat Section -->
+        <div class="tab-content" id="chatTab">
+            <!-- Chat interface will be dynamically rendered by ChatUI -->
         </div>
     </div>
 

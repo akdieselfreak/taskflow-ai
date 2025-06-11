@@ -9,8 +9,10 @@ export class AppState extends EventTarget {
         this.extractedTasks = [];
         this.notes = [];
         this.pendingTasks = [];
+        this.chats = [];
         this.currentTaskId = null;
         this.currentNoteId = null;
+        this.currentChatId = null;
         this.currentStep = 1;
         this.selectedService = '';
         this.onboardingData = {
@@ -233,14 +235,64 @@ export class AppState extends EventTarget {
         return this.pendingTasks.length;
     }
 
+    // Chat Management
+    setChats(chats) {
+        this.chats = Array.isArray(chats) ? chats : [];
+        this.dispatchEvent(new CustomEvent('chatsChanged', { detail: { chats: this.chats } }));
+    }
+
+    addChat(chat) {
+        this.chats.unshift(chat);
+        this.dispatchEvent(new CustomEvent('chatAdded', { detail: { chat } }));
+        this.dispatchEvent(new CustomEvent('chatsChanged', { detail: { chats: this.chats } }));
+    }
+
+    updateChat(chatId, updates) {
+        const chatIndex = this.chats.findIndex(c => c.id === chatId);
+        if (chatIndex !== -1) {
+            this.chats[chatIndex] = { ...this.chats[chatIndex], ...updates };
+            this.dispatchEvent(new CustomEvent('chatUpdated', { 
+                detail: { chatId, chat: this.chats[chatIndex] } 
+            }));
+            this.dispatchEvent(new CustomEvent('chatsChanged', { detail: { chats: this.chats } }));
+        }
+    }
+
+    deleteChat(chatId) {
+        const chatIndex = this.chats.findIndex(c => c.id === chatId);
+        if (chatIndex !== -1) {
+            const deletedChat = this.chats.splice(chatIndex, 1)[0];
+            this.dispatchEvent(new CustomEvent('chatDeleted', { detail: { chatId, chat: deletedChat } }));
+            this.dispatchEvent(new CustomEvent('chatsChanged', { detail: { chats: this.chats } }));
+        }
+    }
+
+    getChat(chatId) {
+        return this.chats.find(c => c.id === chatId);
+    }
+
+    getRecentChats(limit = 10) {
+        return [...this.chats]
+            .sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity))
+            .slice(0, limit);
+    }
+
+    // UI State Management for Chats
+    setCurrentChatId(chatId) {
+        this.currentChatId = chatId;
+        this.dispatchEvent(new CustomEvent('currentChatChanged', { detail: { chatId } }));
+    }
+
     // Debug Methods
     getDebugInfo() {
         return {
             tasksCount: this.tasks.length,
             extractedTasksCount: this.extractedTasks.length,
             notesCount: this.notes.length,
+            chatsCount: this.chats.length,
             currentTaskId: this.currentTaskId,
             currentNoteId: this.currentNoteId,
+            currentChatId: this.currentChatId,
             currentStep: this.currentStep,
             selectedService: this.selectedService,
             userName: this.onboardingData.userName,

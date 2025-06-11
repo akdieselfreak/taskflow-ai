@@ -52,7 +52,7 @@ export class TaskRenderer {
         return `
             <div class="task-item" data-task-id="${task.id}">
                 <div class="task-checkbox ${task.completed ? 'checked' : ''}" 
-                     onclick="toggleTaskComplete('${task.id}', event)"
+                     onclick="window.taskFlowApp.toggleTaskComplete('${task.id}', event)"
                      title="Mark as complete">
                 </div>
                 <div class="task-content" onclick="openModal('edit', '${task.id}')">

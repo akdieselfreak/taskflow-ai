@@ -133,7 +133,28 @@ export class DatabaseManager {
                 notes_title_prompt TEXT,
                 notes_summary_prompt TEXT,
                 notes_task_extraction_prompt TEXT,
-                user_name TEXT
+                user_name TEXT,
+                chat_system_prompt TEXT
+            )`,
+
+            // Chat conversations
+            `CREATE TABLE IF NOT EXISTS chats (
+                id TEXT PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id),
+                title TEXT NOT NULL,
+                created_at DATETIME,
+                last_activity DATETIME,
+                message_count INTEGER DEFAULT 0,
+                last_message TEXT
+            )`,
+
+            // Chat messages
+            `CREATE TABLE IF NOT EXISTS chat_messages (
+                id TEXT PRIMARY KEY,
+                chat_id TEXT REFERENCES chats(id) ON DELETE CASCADE,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                timestamp DATETIME
             )`
         ];
 
@@ -425,8 +446,9 @@ export class DatabaseManager {
                 INSERT OR REPLACE INTO user_config (
                     user_id, service_type, api_endpoint, api_key, model_name,
                     name_variations, system_prompt, notes_title_prompt,
-                    notes_summary_prompt, notes_task_extraction_prompt, user_name
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    notes_summary_prompt, notes_task_extraction_prompt, user_name,
+                    chat_system_prompt
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
 
             await this.dbRun(sql, [
@@ -434,7 +456,7 @@ export class DatabaseManager {
                 config.model, JSON.stringify(config.nameVariations || []),
                 config.systemPrompt, config.notesTitlePrompt,
                 config.notesSummaryPrompt, config.notesTaskExtractionPrompt,
-                config.userName
+                config.userName, config.chatSystemPrompt
             ]);
 
             Logger.log('Configuration saved successfully', { userId });
@@ -468,6 +490,7 @@ export class DatabaseManager {
                 notesTitlePrompt: config.notes_title_prompt,
                 notesSummaryPrompt: config.notes_summary_prompt,
                 notesTaskExtractionPrompt: config.notes_task_extraction_prompt,
+                chatSystemPrompt: config.chat_system_prompt,
                 hasCompletedOnboarding: true, // Mark as completed if config exists
                 userName: config.user_name || 'User' // Add default user name
             };
@@ -477,6 +500,186 @@ export class DatabaseManager {
         } catch (error) {
             Logger.error('Failed to load configuration', error);
             return null;
+        }
+    }
+
+    // ====== CHAT OPERATIONS ======
+
+    async saveChats(userId, chats) {
+        try {
+            // Use transaction for atomic operation
+            await this.dbRun('BEGIN TRANSACTION');
+            
+            try {
+                // Delete existing chats and messages for user
+                await this.dbRun('DELETE FROM chat_messages WHERE chat_id IN (SELECT id FROM chats WHERE user_id = ?)', [userId]);
+                await this.dbRun('DELETE FROM chats WHERE user_id = ?', [userId]);
+                
+                // Insert chats and messages
+                const chatSql = `
+                    INSERT INTO chats (
+                        id, user_id, title, created_at, last_activity, message_count, last_message
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                `;
+
+                const messageSql = `
+                    INSERT INTO chat_messages (
+                        id, chat_id, role, content, timestamp
+                    ) VALUES (?, ?, ?, ?, ?)
+                `;
+
+                for (const chat of chats) {
+                    // Insert chat
+                    await this.dbRun(chatSql, [
+                        chat.id, userId, chat.title, chat.createdAt,
+                        chat.lastActivity, chat.messageCount || 0, chat.lastMessage || ''
+                    ]);
+
+                    // Insert messages
+                    if (chat.messages && chat.messages.length > 0) {
+                        for (const message of chat.messages) {
+                            await this.dbRun(messageSql, [
+                                message.id, chat.id, message.role, message.content, message.timestamp
+                            ]);
+                        }
+                    }
+                }
+
+                await this.dbRun('COMMIT');
+                Logger.log('Chats saved successfully', { userId, count: chats.length });
+                return true;
+            } catch (error) {
+                await this.dbRun('ROLLBACK');
+                throw error;
+            }
+        } catch (error) {
+            Logger.error('Failed to save chats', error);
+            return false;
+        }
+    }
+
+    async loadChats(userId) {
+        try {
+            // Load chats
+            const chatSql = `
+                SELECT * FROM chats WHERE user_id = ? ORDER BY last_activity DESC
+            `;
+            
+            const chatRows = await this.dbAll(chatSql, [userId]);
+            
+            // Load messages for all chats
+            const messageSql = `
+                SELECT * FROM chat_messages 
+                WHERE chat_id IN (SELECT id FROM chats WHERE user_id = ?)
+                ORDER BY timestamp ASC
+            `;
+            
+            const messageRows = await this.dbAll(messageSql, [userId]);
+            
+            // Group messages by chat_id
+            const messagesByChat = {};
+            messageRows.forEach(row => {
+                if (!messagesByChat[row.chat_id]) {
+                    messagesByChat[row.chat_id] = [];
+                }
+                messagesByChat[row.chat_id].push({
+                    id: row.id,
+                    role: row.role,
+                    content: row.content,
+                    timestamp: row.timestamp
+                });
+            });
+            
+            // Build chat objects with messages
+            const chats = chatRows.map(row => ({
+                id: row.id,
+                title: row.title,
+                createdAt: row.created_at,
+                lastActivity: row.last_activity,
+                messageCount: row.message_count,
+                lastMessage: row.last_message,
+                messages: messagesByChat[row.id] || []
+            }));
+
+            Logger.log('Chats loaded successfully', { userId, count: chats.length });
+            return chats;
+        } catch (error) {
+            Logger.error('Failed to load chats', error);
+            return [];
+        }
+    }
+
+    async saveChat(userId, chat) {
+        try {
+            // Use transaction for atomic operation
+            await this.dbRun('BEGIN TRANSACTION');
+            
+            try {
+                // Insert or update chat
+                const chatSql = `
+                    INSERT OR REPLACE INTO chats (
+                        id, user_id, title, created_at, last_activity, message_count, last_message
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                `;
+
+                await this.dbRun(chatSql, [
+                    chat.id, userId, chat.title, chat.createdAt,
+                    chat.lastActivity, chat.messageCount || 0, chat.lastMessage || ''
+                ]);
+
+                // Delete existing messages for this chat
+                await this.dbRun('DELETE FROM chat_messages WHERE chat_id = ?', [chat.id]);
+
+                // Insert messages
+                if (chat.messages && chat.messages.length > 0) {
+                    const messageSql = `
+                        INSERT INTO chat_messages (
+                            id, chat_id, role, content, timestamp
+                        ) VALUES (?, ?, ?, ?, ?)
+                    `;
+
+                    for (const message of chat.messages) {
+                        await this.dbRun(messageSql, [
+                            message.id, chat.id, message.role, message.content, message.timestamp
+                        ]);
+                    }
+                }
+
+                await this.dbRun('COMMIT');
+                Logger.log('Chat saved successfully', { userId, chatId: chat.id });
+                return true;
+            } catch (error) {
+                await this.dbRun('ROLLBACK');
+                throw error;
+            }
+        } catch (error) {
+            Logger.error('Failed to save chat', error);
+            return false;
+        }
+    }
+
+    async deleteChat(userId, chatId) {
+        try {
+            // Use transaction for atomic operation
+            await this.dbRun('BEGIN TRANSACTION');
+            
+            try {
+                // Delete messages first (due to foreign key constraint)
+                await this.dbRun('DELETE FROM chat_messages WHERE chat_id = ?', [chatId]);
+                
+                // Delete chat
+                const result = await this.dbRun('DELETE FROM chats WHERE id = ? AND user_id = ?', [chatId, userId]);
+                
+                await this.dbRun('COMMIT');
+                Logger.log('Chat deleted successfully', { userId, chatId });
+                return true;
+            } catch (error) {
+                await this.dbRun('ROLLBACK');
+                throw error;
+            }
+        } catch (error) {
+            Logger.error('Failed to delete chat', error);
+            return false;
         }
     }
 
