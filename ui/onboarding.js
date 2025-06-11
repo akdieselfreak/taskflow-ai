@@ -29,6 +29,7 @@ export class OnboardingManager {
         // Make methods available globally for HTML onclick handlers
         window.nextStep = (fromStep) => this.nextStep(fromStep);
         window.previousStep = (fromStep) => this.previousStep(fromStep);
+        window.showStep = (step) => this.showStep(step);
         window.selectStorageMode = (mode) => this.selectStorageMode(mode);
         window.createAccount = () => this.createAccount();
         window.signInUser = () => this.signInUser();

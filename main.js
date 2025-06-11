@@ -2102,6 +2102,17 @@ function initializeBasicGlobalFunctions() {
         alert('The application is still loading. Please wait a moment and try again.');
     };
     
+    // Onboarding functions
+    window.showStep = window.showStep || showLoadingMessage;
+    window.nextStep = window.nextStep || showLoadingMessage;
+    window.previousStep = window.previousStep || showLoadingMessage;
+    window.selectService = window.selectService || showLoadingMessage;
+    window.createAccount = window.createAccount || showLoadingMessage;
+    window.signInUser = window.signInUser || showLoadingMessage;
+    window.testOllamaConnection = window.testOllamaConnection || showLoadingMessage;
+    window.testOpenWebUIConnection = window.testOpenWebUIConnection || showLoadingMessage;
+    window.completeOnboarding = window.completeOnboarding || showLoadingMessage;
+    
     // Notes functions
     window.openNotesModal = window.openNotesModal || showLoadingMessage;
     window.closeNotesModal = window.closeNotesModal || (() => {});

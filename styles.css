@@ -634,8 +634,8 @@ h1 {
 
 .service-option.selected {
     border-color: var(--primary-color);
-    background: linear-gradient(135deg, var(--primary-color)10, var(--card-bg));
-    box-shadow: 0 8px 25px rgba(var(--primary-rgb), 0.2);
+    background: linear-gradient(135deg, var(--primary-color), var(--card-bg));
+    box-shadow: 0 8px 25px rgba(233, 69, 96, 0.2);
 }
 
 .service-option .service-icon {
@@ -676,12 +676,12 @@ h1 {
 
 .test-item.success {
     border-left-color: var(--success-color);
-    background: rgba(var(--success-rgb), 0.1);
+    background: rgba(76, 175, 80, 0.1);
 }
 
 .test-item.error {
     border-left-color: var(--error-color);
-    background: rgba(var(--error-rgb), 0.1);
+    background: rgba(255, 67, 54, 0.1);
 }
 
 .test-item .test-icon {
@@ -702,7 +702,7 @@ h1 {
 
 .connection-status .success {
     color: var(--success-color);
-    background: rgba(var(--success-rgb), 0.1);
+    background: rgba(76, 175, 80, 0.1);
     padding: 0.75rem;
     border-radius: 6px;
     border-left: 4px solid var(--success-color);
@@ -711,7 +711,7 @@ h1 {
 
 .connection-status .error {
     color: var(--error-color);
-    background: rgba(var(--error-rgb), 0.1);
+    background: rgba(255, 67, 54, 0.1);
     padding: 0.75rem;
     border-radius: 6px;
     border-left: 4px solid var(--error-color);
@@ -752,8 +752,8 @@ h1 {
 
 .model-option input[type="radio"]:checked + .model-card {
     border-color: var(--primary-color);
-    background: linear-gradient(135deg, var(--primary-color)10, var(--card-bg));
-    box-shadow: 0 8px 25px rgba(var(--primary-rgb), 0.2);
+    background: linear-gradient(135deg, var(--primary-color), var(--card-bg));
+    box-shadow: 0 8px 25px rgba(233, 69, 96, 0.2);
 }
 
 .model-card h4 {

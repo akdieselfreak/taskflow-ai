@@ -21,9 +21,20 @@ const getCorsOrigins = () => {
         return process.env.CORS_ORIGIN.split(',').map(origin => origin.trim());
     }
     
+    // Default CORS origins - should be overridden by CORS_ORIGIN env var
     return process.env.NODE_ENV === 'production' 
-        ? ['https://your-domain.com'] 
-        : ['http://localhost:8000', 'http://localhost:3000', 'http://localhost:3001'];
+        ? [
+            'https://your-domain.com',
+            `http://localhost:${process.env.EXTERNAL_PORT || 8080}`,
+            `https://localhost:${process.env.EXTERNAL_PORT || 8080}`
+          ] 
+        : [
+            'http://localhost:8000', 
+            'http://localhost:3000', 
+            'http://localhost:3001',
+            `http://localhost:${process.env.EXTERNAL_PORT || 8080}`,
+            `https://localhost:${process.env.EXTERNAL_PORT || 8080}`
+          ];
 };
 
 // Security middleware
@@ -32,12 +43,22 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             styleSrc: ["'self'", "'unsafe-inline'"],
-            scriptSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
             scriptSrcAttr: ["'unsafe-inline'"],
+            scriptSrcElem: ["'self'", "'unsafe-inline'"],
             imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'", "http://localhost:*", "http://100.66.248.101:*", "https://api.openai.com"]
+            connectSrc: ["'self'", "http://localhost:*", "https://api.openai.com", "ws:", "wss:"],
+            workerSrc: ["'self'", "blob:"],
+            childSrc: ["'self'", "blob:"],
+            objectSrc: ["'none'"],
+            mediaSrc: ["'self'"],
+            manifestSrc: ["'self'"],
+            prefetchSrc: ["'self'"],
+            fontSrc: ["'self'", "data:", "https:"],
+            frameSrc: ["'none'"]
         }
-    }
+    },
+    crossOriginEmbedderPolicy: false
 }));
 
 app.use(cors({

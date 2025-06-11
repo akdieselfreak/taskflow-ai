@@ -11,6 +11,13 @@ services:
       - PORT=3001
       - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-in-production}
       - DATABASE_PATH=/app/data/taskflow.db
+      - EXTERNAL_HOST=${EXTERNAL_HOST:-localhost}
+      - EXTERNAL_PORT=${EXTERNAL_PORT:-8080}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:8080}
+      - AUTH_RATE_LIMIT_WINDOW_MS=${AUTH_RATE_LIMIT_WINDOW_MS:-300000}
+      - AUTH_RATE_LIMIT_MAX_REQUESTS=${AUTH_RATE_LIMIT_MAX_REQUESTS:-50}
+      - DATA_RATE_LIMIT_WINDOW_MS=${DATA_RATE_LIMIT_WINDOW_MS:-900000}
+      - DATA_RATE_LIMIT_MAX_REQUESTS=${DATA_RATE_LIMIT_MAX_REQUESTS:-200}
     volumes:
       - taskflow_data:/app/data
     restart: unless-stopped
