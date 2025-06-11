@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TaskFlow AI - Smart Task Management</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.openai.com ws: wss:; img-src 'self' data: https:; font-src 'self' data: https:;">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -569,6 +570,22 @@
     <!-- Fallback for browsers that don't support modules -->
     <script nomodule>
         alert('This application requires a modern browser that supports ES6 modules. Please update your browser.');
+    </script>
+    
+    <!-- Fix for showStep function -->
+    <script>
+        function showStep(stepId) {
+            // Hide all steps
+            document.querySelectorAll('.onboarding-step').forEach(step => {
+                step.style.display = 'none';
+            });
+            
+            // Show the requested step
+            const stepToShow = document.getElementById('step' + stepId);
+            if (stepToShow) {
+                stepToShow.style.display = 'block';
+            }
+        }
     </script>
 </body>
 </html>

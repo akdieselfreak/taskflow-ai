@@ -42,7 +42,7 @@ export class AuthManager {
         }
 
         try {
-            const response = await fetch('http://localhost:3001/api/auth/verify', {
+            const response = await fetch('/api/auth/verify', {
                 headers: {
                     'Authorization': `Bearer ${this.authToken}`
                 }
@@ -73,7 +73,7 @@ export class AuthManager {
 
     async login(username, password) {
         try {
-            const response = await fetch('http://localhost:3001/api/auth/login', {
+            const response = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -120,7 +120,7 @@ export class AuthManager {
 
     async register(username, email, password) {
         try {
-            const response = await fetch('http://localhost:3001/api/auth/register', {
+            const response = await fetch('/api/auth/register', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -320,7 +320,7 @@ export class AuthManager {
         }
 
         try {
-            const response = await fetch('http://localhost:3001/api/auth/verify', {
+            const response = await fetch('/api/auth/verify', {
                 headers: this.getAuthHeaders()
             });
 

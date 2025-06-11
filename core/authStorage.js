@@ -56,7 +56,7 @@ export class AuthStorageManager {
     async saveConfigurationToDatabase(onboardingData) {
         return await this.throttledRequest(async () => {
             try {
-                const response = await fetch('http://localhost:3001/api/config', {
+                const response = await fetch('/api/config', {
                     method: 'POST',
                     headers: authManager.getAuthHeaders(),
                     body: JSON.stringify({ config: onboardingData })
@@ -78,7 +78,7 @@ export class AuthStorageManager {
 
     async loadConfigurationFromDatabase() {
         try {
-            const response = await fetch('http://localhost:3001/api/config', {
+            const response = await fetch('/api/config', {
                 headers: authManager.getAuthHeaders()
             });
 
@@ -122,7 +122,7 @@ export class AuthStorageManager {
     async saveTasksToDatabase(tasks) {
         return await this.throttledRequest(async () => {
             try {
-                const response = await fetch('http://localhost:3001/api/tasks', {
+                const response = await fetch('/api/tasks', {
                     method: 'POST',
                     headers: authManager.getAuthHeaders(),
                     body: JSON.stringify({ tasks })
@@ -144,7 +144,7 @@ export class AuthStorageManager {
 
     async loadTasksFromDatabase() {
         try {
-            const response = await fetch('http://localhost:3001/api/tasks', {
+            const response = await fetch('/api/tasks', {
                 headers: authManager.getAuthHeaders()
             });
 
@@ -188,7 +188,7 @@ export class AuthStorageManager {
     async saveNotesToDatabase(notes) {
         return await this.throttledRequest(async () => {
             try {
-                const response = await fetch('http://localhost:3001/api/notes', {
+                const response = await fetch('/api/notes', {
                     method: 'POST',
                     headers: authManager.getAuthHeaders(),
                     body: JSON.stringify({ notes })
@@ -210,7 +210,7 @@ export class AuthStorageManager {
 
     async loadNotesFromDatabase() {
         try {
-            const response = await fetch('http://localhost:3001/api/notes', {
+            const response = await fetch('/api/notes', {
                 headers: authManager.getAuthHeaders()
             });
 
@@ -254,7 +254,7 @@ export class AuthStorageManager {
     async saveChatsToDatabase(chats) {
         return await this.throttledRequest(async () => {
             try {
-                const response = await fetch('http://localhost:3001/api/chats', {
+                const response = await fetch('/api/chats', {
                     method: 'POST',
                     headers: authManager.getAuthHeaders(),
                     body: JSON.stringify({ chats })
@@ -276,7 +276,7 @@ export class AuthStorageManager {
 
     async loadChatsFromDatabase() {
         try {
-            const response = await fetch('http://localhost:3001/api/chats', {
+            const response = await fetch('/api/chats', {
                 headers: authManager.getAuthHeaders()
             });
 
