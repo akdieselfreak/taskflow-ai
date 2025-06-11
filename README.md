@@ -291,38 +291,6 @@ POST /api/migrate/import  # Import data
 
 ## 🚀 Deployment
 
-### 🌐 GitHub Pages (Live Demo)
-
-**Live Demo:** https://akdieselfreak.github.io/taskflow-ai/
-
-Deploy the frontend to GitHub Pages for a live demonstration:
-
-```bash
-# Automatic deployment is already configured!
-# Just push to main branch and GitHub Actions will deploy
-git push origin main
-```
-
-**Features Available on GitHub Pages:**
-- ✅ Frontend interface and UI
-- ✅ Local storage functionality
-- ✅ Manual task creation
-- ✅ Notes management
-- ⚠️ Limited functionality (no backend features)
-
-**Missing on GitHub Pages:**
-- ❌ User authentication
-- ❌ Cloud data synchronization
-- ❌ AI-powered task extraction
-
-For full functionality, use the Docker deployment below.
-
-### Static Hosting (Frontend Only)
-Deploy the frontend files to any static web host:
-- Vercel, Netlify, GitHub Pages
-- AWS S3 + CloudFront
-- Your own web server
-
 ### Full-Stack Deployment
 For complete functionality including authentication:
 - **VPS/Cloud Server** - Deploy both frontend and backend
