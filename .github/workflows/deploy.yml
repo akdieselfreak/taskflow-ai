@@ -1,0 +1,78 @@
+name: Deploy TaskFlow AI to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Create production build
+      run: |
+        # Create a build directory
+        mkdir -p build
+        
+        # Copy static files
+        cp index.html build/
+        cp styles.css build/
+        cp main.js build/
+        cp manual.html build/
+        cp -r core build/
+        cp -r ui build/
+        cp -r features build/
+        cp -r services build/
+        
+        # Create a simple server.js for GitHub Pages (client-side only)
+        cat > build/server-info.js << 'EOF'
+        // GitHub Pages deployment info
+        window.GITHUB_PAGES_DEPLOYMENT = true;
+        window.API_BASE_URL = 'https://your-backend-url.com'; // Update this with your actual backend URL
+        console.log('TaskFlow AI - GitHub Pages Deployment');
+        EOF
+        
+        # Update index.html to include deployment info
+        sed -i 's|<script type="module" src="main.js"></script>|<script src="server-info.js"></script>\n    <script type="module" src="main.js"></script>|' build/index.html
+        
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+      
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: './build'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
