@@ -21,40 +21,66 @@ const getCorsOrigins = () => {
         return process.env.CORS_ORIGIN.split(',').map(origin => origin.trim());
     }
     
-    // Default CORS origins - should be overridden by CORS_ORIGIN env var
+    // Build default CORS origins based on external host/port
+    const externalHost = process.env.EXTERNAL_HOST || 'localhost';
+    const externalPort = process.env.EXTERNAL_PORT || '8080';
+    
+    const defaultOrigins = [
+        `http://${externalHost}:${externalPort}`,
+        `https://${externalHost}:${externalPort}`,
+        'http://localhost:8000', 
+        'http://localhost:3000', 
+        'http://localhost:3001',
+        `http://localhost:${externalPort}`,
+        `https://localhost:${externalPort}`
+    ];
+    
     return process.env.NODE_ENV === 'production' 
-        ? [
-            'https://your-domain.com',
-            `http://localhost:${process.env.EXTERNAL_PORT || 8080}`,
-            `https://localhost:${process.env.EXTERNAL_PORT || 8080}`
-          ] 
-        : [
-            'http://localhost:8000', 
-            'http://localhost:3000', 
-            'http://localhost:3001',
-            `http://localhost:${process.env.EXTERNAL_PORT || 8080}`,
-            `https://localhost:${process.env.EXTERNAL_PORT || 8080}`
-          ];
+        ? defaultOrigins.filter(origin => !origin.includes('localhost:8000') && !origin.includes('localhost:3000') && !origin.includes('localhost:3001'))
+        : defaultOrigins;
+};
+
+// Get external host for CSP configuration
+const getExternalHost = () => {
+    return process.env.EXTERNAL_HOST || 'localhost';
+};
+
+const getExternalPort = () => {
+    return process.env.EXTERNAL_PORT || '8080';
+};
+
+// Build CSP sources based on configuration
+const buildCSPSources = () => {
+    const externalHost = getExternalHost();
+    const externalPort = getExternalPort();
+    
+    const httpSource = `http://${externalHost}:${externalPort}`;
+    const httpsSource = `https://${externalHost}:${externalPort}`;
+    
+    return {
+        self: ["'self'", httpSource],
+        connect: ["'self'", httpSource, httpsSource, "http://localhost:*", "https://api.openai.com", "ws:", "wss:"]
+    };
 };
 
 // Security middleware
+const cspSources = buildCSPSources();
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
-            defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+            defaultSrc: cspSources.self,
+            styleSrc: [...cspSources.self, "'unsafe-inline'"],
+            scriptSrc: [...cspSources.self, "'unsafe-inline'", "'unsafe-eval'"],
             scriptSrcAttr: ["'unsafe-inline'"],
-            scriptSrcElem: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'", "http://localhost:*", "https://api.openai.com", "ws:", "wss:"],
-            workerSrc: ["'self'", "blob:"],
-            childSrc: ["'self'", "blob:"],
+            scriptSrcElem: [...cspSources.self, "'unsafe-inline'"],
+            imgSrc: [...cspSources.self, "data:", "https:"],
+            connectSrc: cspSources.connect,
+            workerSrc: [...cspSources.self, "blob:"],
+            childSrc: [...cspSources.self, "blob:"],
             objectSrc: ["'none'"],
-            mediaSrc: ["'self'"],
-            manifestSrc: ["'self'"],
-            prefetchSrc: ["'self'"],
-            fontSrc: ["'self'", "data:", "https:"],
+            mediaSrc: cspSources.self,
+            manifestSrc: cspSources.self,
+            fontSrc: [...cspSources.self, "data:", "https:"],
             frameSrc: ["'none'"]
         }
     },
